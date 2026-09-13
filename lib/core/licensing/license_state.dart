@@ -1,4 +1,4 @@
-enum LicenseStatus { demo, licensed, expired, clockTampered }
+enum LicenseStatus { demo, licensed, unlicensed, expired, clockTampered }
 
 class LicenseState {
   const LicenseState({

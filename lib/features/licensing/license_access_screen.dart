@@ -12,17 +12,25 @@ class LicenseAccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isClockTampered = licenseState.status == LicenseStatus.clockTampered;
+    final isClockTampered =
+        licenseState.status == LicenseStatus.clockTampered;
+    final isUnlicensed =
+        licenseState.status == LicenseStatus.unlicensed;
 
     final title = isClockTampered
         ? 'License Access Temporarily Blocked'
-        : 'Demo Period Expired';
+        : isUnlicensed
+            ? 'License Required'
+            : 'Demo Period Expired';
 
     final message = isClockTampered
         ? 'The system clock appears to have been moved backwards. '
-              'Please restore the correct date and time, then restart Creator Yard.'
-        : 'Your 14-day Creator Yard demo period has ended. '
-              'Please activate a license to continue using the application.';
+            'Please restore the correct date and time, then restart Creator Yard.'
+        : isUnlicensed
+            ? 'This Creator Yard installation is not currently licensed. '
+                'Please contact Creator Yard support to activate this installation.'
+            : 'Your 14-day Creator Yard demo period has ended. '
+                'Please activate a license to continue using the application.';
 
     return Scaffold(
       backgroundColor: AppColors.background,

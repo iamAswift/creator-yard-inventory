@@ -12,8 +12,10 @@ import 'database/daos/settings_dao.dart';
 import 'core/email/sale_email_worker.dart';
 import 'core/system/installation_registration_service.dart';
 import 'core/licensing/demo_license_service.dart';
+import 'core/licensing/commercial_license_provider.dart';
 import 'core/licensing/license_repository.dart';
 import 'core/licensing/license_state.dart';
+import 'core/system/installation_identity.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,8 +65,13 @@ Future<void> main() async {
   // public Flutter application.
   //
 
+  const isCommercialBuild =
+    bool.fromEnvironment('CREATOR_YARD_COMMERCIAL');
+
   final licenseRepository = LicenseRepository(
-    provider: DemoLicenseService(settingsDao: settingsDao),
+    provider: isCommercialBuild
+      ? CommercialLicenseProvider(settingsDao: settingsDao)
+      : DemoLicenseService(settingsDao: settingsDao),
   );
 
   LicenseState? licenseState;
@@ -94,6 +101,25 @@ Future<void> main() async {
     // separately after this persistence layer is verified.
     debugPrint('Creator Yard licensing initialization failed: $e');
     debugPrint('$stackTrace');
+
+    if (isCommercialBuild) {
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+
+      licenseState = LicenseState(
+        status: LicenseStatus.unlicensed,
+        installationId: installationId,
+      );
+      debugPrint(
+        'Commercial licensing failed. '
+        'The application will continue in unlicensed mode.',
+      );
+    } else {
+      debugPrint(
+        'Demo licensing failed. '
+        'The application will continue in unlicensed mode.',
+      );
+    }
   }
 
   // ------------------------------------------------------------

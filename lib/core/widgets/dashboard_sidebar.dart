@@ -127,6 +127,7 @@ class _DashboardSidebarState
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final responsive = context.responsive;
 
     final extended =
@@ -137,14 +138,14 @@ class _DashboardSidebarState
         extended ? 190.0 : 72.0;
 
     return Material(
-      color: AppColors.surface,
+      color: colorScheme.surface,
       child: Container(
         width: sidebarWidth,
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
           border: Border(
             right: BorderSide(
-              color: AppColors.border,
+              color: colorScheme.outlineVariant,
               width: 1,
             ),
           ),
@@ -231,6 +232,7 @@ class _DashboardSidebarState
     BuildContext context, {
     required bool extended,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     // ==========================================================
     // EXTENDED SIDEBAR
     // ==========================================================
@@ -255,7 +257,7 @@ class _DashboardSidebarState
           preferBelow: false,
           verticalOffset: 8,
           decoration: BoxDecoration(
-            color: AppColors.textPrimary,
+            color: colorScheme.inverseSurface,
             borderRadius:
                 BorderRadius.circular(
               AppRadius.sm,
@@ -280,7 +282,7 @@ class _DashboardSidebarState
           ),
           textStyle:
               AppTextStyles.small.copyWith(
-            color: Colors.white,
+            color: colorScheme.onInverseSurface,
             fontSize: 11,
             fontWeight:
                 FontWeight.w600,
@@ -318,7 +320,7 @@ class _DashboardSidebarState
                 decoration:
                     BoxDecoration(
                   color:
-                      AppColors.dangerLight,
+                      colorScheme.errorContainer,
                   borderRadius:
                       BorderRadius.circular(
                     AppRadius.lg,
@@ -388,7 +390,7 @@ class _DashboardSidebarState
         preferBelow: false,
         verticalOffset: 8,
         decoration: BoxDecoration(
-          color: AppColors.textPrimary,
+          color: colorScheme.inverseSurface,
           borderRadius:
               BorderRadius.circular(
             AppRadius.sm,
@@ -413,7 +415,7 @@ class _DashboardSidebarState
         ),
         textStyle:
             AppTextStyles.small.copyWith(
-          color: Colors.white,
+          color: colorScheme.onInverseSurface,
           fontSize: 11,
           fontWeight:
               FontWeight.w600,
@@ -446,7 +448,7 @@ class _DashboardSidebarState
               decoration:
                   BoxDecoration(
                 color:
-                    AppColors.dangerLight,
+                    colorScheme.errorContainer,
                 borderRadius:
                     BorderRadius.circular(
                   AppRadius.lg,
@@ -557,6 +559,7 @@ class _DashboardSidebarState
             child: Row(
               children: [
                 _buildIcon(
+                  context,
                   destination,
                   isSelected,
                 ),
@@ -604,6 +607,7 @@ class _DashboardSidebarState
     required _SidebarDestination destination,
     required bool isSelected,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding:
           const EdgeInsets.symmetric(
@@ -623,7 +627,7 @@ class _DashboardSidebarState
         preferBelow: false,
         verticalOffset: 8,
         decoration: BoxDecoration(
-          color: AppColors.textPrimary,
+          color: colorScheme.inverseSurface,
           borderRadius:
               BorderRadius.circular(
             AppRadius.sm,
@@ -648,7 +652,7 @@ class _DashboardSidebarState
         ),
         textStyle:
             AppTextStyles.small.copyWith(
-          color: Colors.white,
+          color: colorScheme.onInverseSurface,
           fontSize: 11,
           fontWeight:
               FontWeight.w600,
@@ -700,6 +704,7 @@ class _DashboardSidebarState
               ),
               child: Center(
                 child: _buildIcon(
+                  context,
                   destination,
                   isSelected,
                 ),
@@ -716,9 +721,11 @@ class _DashboardSidebarState
   // ============================================================
 
   Widget _buildIcon(
+    BuildContext context,
     _SidebarDestination destination,
     bool isSelected,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     return AnimatedSwitcher(
       duration:
           const Duration(
@@ -747,7 +754,7 @@ class _DashboardSidebarState
         size: 22,
         color: isSelected
             ? AppColors.primary
-            : AppColors.textSecondary,
+            : colorScheme.onSurfaceVariant,
       ),
     );
   }

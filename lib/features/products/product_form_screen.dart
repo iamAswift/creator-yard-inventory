@@ -14,6 +14,8 @@ import '../../core/widgets/inventory_widgets.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/category_dao.dart';
 import '../../database/daos/product_dao.dart';
+import '../../database/daos/settings_dao.dart';
+import '../../database/business_settings.dart';
 import '../../core/responsive/responsive.dart';
 
 class ProductFormScreen extends StatefulWidget {
@@ -40,9 +42,11 @@ class _ProductFormScreenState
   DateTime? _selectedExpiryDate;
 
   bool _isSaving = false;
+  bool _productExpiryEnabled = true;
 
   late final ProductDao _productDao;
   late final CategoryDao _categoryDao;
+  late final SettingsDao _settingsDao;
 
   final List<String> _units = [
     'pcs',
@@ -62,6 +66,8 @@ class _ProductFormScreenState
 
     _productDao = getProductDao();
     _categoryDao = getCategoryDao();
+    _settingsDao = getSettingsDao();
+    _loadProductSettings();
   }
 
   // ============================================================
@@ -119,10 +125,36 @@ class _ProductFormScreenState
   }
 
   // ============================================================
-  // EXPIRY DATE
+  // PRODUCT SETTINGS
   // ============================================================
 
+  Future<void> _loadProductSettings() async {
+    final enabled = await _settingsDao.getBoolSettingOrDefault(
+      BusinessSettings.productExpiryEnabled,
+      defaultValue: true,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _productExpiryEnabled = enabled;
+    });
+  }
+
   Future<void> _pickExpiryDate() async {
+    if (!_productExpiryEnabled) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Product expiry tracking is disabled in settings.',
+          ),
+        ),
+      );
+
+      return;
+    }
     final now = DateTime.now();
 
     final picked = await showDatePicker(
@@ -743,6 +775,7 @@ class _ProductFormScreenState
                   ),
                 ),
 
+                if (_productExpiryEnabled) ...[
                 // ==================================================
                 // EXPIRY
                 // ==================================================
@@ -797,6 +830,7 @@ class _ProductFormScreenState
                   ),
                 ),
 
+                ],
                 // ==================================================
                 // SAVE BUTTON
                 // ==================================================

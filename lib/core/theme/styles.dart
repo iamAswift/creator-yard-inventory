@@ -24,6 +24,16 @@ class AppColors {
   static const surfaceSoft = Color(0xFFF9FAFC);
 
   // ============================================================
+  // DARK THEME
+  // ============================================================
+
+  static const darkBackground = Color(0xFF101418);
+  static const darkSurface = Color(0xFF171C21);
+  static const darkSurfaceVariant = Color(0xFF1D242B);
+  static const darkBorder = Color(0xFF343B43);
+  static const darkTextSecondary = Color(0xFFB0B8C1);
+
+  // ============================================================
   // TEXT
   // ============================================================
 
@@ -112,7 +122,6 @@ class AppRadius {
 // ================================================================
 
 class AppSizes {
-
   // General
   static const double buttonHeight = 48;
   static const double inputHeight = 52;
@@ -167,7 +176,6 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
   );
-
 
   // ============================================================
   // DASHBOARD
@@ -232,13 +240,9 @@ class AppTextStyles {
     color: AppColors.textSecondary,
   );
 
-
-  
-
   // ============================================================
   // FORM / OTHER
   // ============================================================
-
 
   static const EdgeInsets screenPadding = EdgeInsets.all(16);
 

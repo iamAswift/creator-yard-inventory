@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
 
 import '../../database/app_database.dart';
+import '../../core/theme/styles.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final int userId;
@@ -287,7 +288,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
 
       appBar: AppBar(
         title: const Text(
@@ -316,14 +317,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // ==================================================
                 // ACCOUNT INFORMATION
                 // ==================================================
-                if (_user != null) _buildAccountInformation(),
+                if (_user != null) _buildAccountInformation(theme),
 
                 if (_user != null) const SizedBox(height: 20),
 
                 // ==================================================
                 // PASSWORD MANAGEMENT
                 // ==================================================
-                _buildPasswordManagement(),
+                _buildPasswordManagement(theme),
 
                 const SizedBox(height: 20),
 
@@ -331,6 +332,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // PERSONAL INFORMATION
                 // ==================================================
                 _buildSectionCard(
+                  theme: theme,
                   title: 'Personal Information',
                   icon: Icons.person_outline,
                   child: Column(
@@ -376,6 +378,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // EMPLOYMENT INFORMATION
                 // ==================================================
                 _buildSectionCard(
+                  theme: theme,
                   title: 'Employment Information',
                   icon: Icons.work_outline,
                   child: Column(
@@ -409,6 +412,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 // PERMISSIONS
                 // ==================================================
                 _buildSectionCard(
+                  theme: theme,
                   title: 'Permissions',
                   icon: Icons.security_outlined,
                   child: Column(
@@ -527,15 +531,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         break;
 
       default:
-        roleColor = Colors.green;
+        roleColor = AppColors.success;
     }
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: theme.cardTheme.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -564,7 +568,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     width: 15,
                     height: 15,
                     decoration: BoxDecoration(
-                      color: user.isActive ? Colors.green : Colors.grey,
+                      color: user.isActive ? AppColors.success : theme.colorScheme.onSurfaceVariant,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -591,9 +595,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                   Text(
                     user.loginId ?? 'No Login ID',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey,
+                      color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -608,7 +612,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                       _buildBadge(
                         label: user.isActive ? 'ACTIVE' : 'INACTIVE',
-                        color: user.isActive ? Colors.green : Colors.grey,
+                        color: user.isActive ? AppColors.success : theme.colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -625,19 +629,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // ACCOUNT INFORMATION
   // ============================================================
 
-  Widget _buildAccountInformation() {
+  Widget _buildAccountInformation(ThemeData theme) {
     final user = _user!;
 
     return _buildSectionCard(
+      theme: theme,
       title: 'Account Information',
       icon: Icons.manage_accounts_outlined,
       child: Column(
         children: [
-          _buildInfoRow('Full Name', user.name, Icons.person_outline),
+          _buildInfoRow(theme, 'Full Name', user.name, Icons.person_outline),
 
           const Divider(height: 24),
 
           _buildInfoRow(
+            theme,
             'Login ID',
             user.loginId ?? 'Not assigned',
             Icons.badge_outlined,
@@ -645,11 +651,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
           const Divider(height: 24),
 
-          _buildInfoRow('Email', user.email, Icons.email_outlined),
+          _buildInfoRow(theme, 'Email', user.email, Icons.email_outlined),
 
           const Divider(height: 24),
 
           _buildInfoRow(
+            theme,
             'Role',
             user.role.toUpperCase(),
             Icons.admin_panel_settings_outlined,
@@ -684,16 +691,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // PASSWORD MANAGEMENT
   // ============================================================
 
-  Widget _buildPasswordManagement() {
+  Widget _buildPasswordManagement(ThemeData theme) {
     return _buildSectionCard(
+      theme: theme,
       title: 'Password Management',
       icon: Icons.lock_outline,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Set a new password for this employee.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
+            style: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 13,
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -771,17 +782,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // ============================================================
 
   Widget _buildSectionCard({
+    required ThemeData theme,
     required String title,
     required IconData icon,
     required Widget child,
   }) {
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: theme.cardTheme.color,
 
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
 
       child: Padding(
@@ -830,10 +842,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // INFO ROW
   // ============================================================
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildInfoRow(
+    ThemeData theme,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Row(
       children: [
-        Icon(icon, size: 19, color: Colors.grey.shade600),
+        Icon(icon, size: 19, color: theme.colorScheme.onSurfaceVariant),
 
         const SizedBox(width: 12),
 
@@ -845,7 +862,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey.shade600,
+                  color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -9,8 +9,10 @@ import 'package:supermarket_inventory/core/widgets/back_button.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
+import '../../database/business_settings.dart';
 import '../../database/daos/category_dao.dart';
 import '../../database/daos/product_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import 'product_form_screen.dart';
 import 'product_history_screen.dart';
 
@@ -24,6 +26,10 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen> {
   late final ProductDao _productDao;
   late final CategoryDao _categoryDao;
+
+  late final SettingsDao _settingsDao;
+
+  bool _productExpiryEnabled = true;
 
   // ============================================================
   // CATEGORY STREAM
@@ -61,8 +67,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     _productDao = getProductDao();
     _categoryDao = getCategoryDao();
+    _settingsDao = getSettingsDao();
 
     _categoriesStream = _categoryDao.watchAllCategories();
+    _loadProductSettings();
+  }
+
+  Future<void> _loadProductSettings() async {
+    final enabled = await _settingsDao.getBoolSettingOrDefault(
+      BusinessSettings.productExpiryEnabled,
+      defaultValue: true,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _productExpiryEnabled = enabled;
+    });
   }
 
   // ============================================================
@@ -184,15 +205,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       icon: Icons.sell_outlined,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: expiryController,
-                    style: AppTextStyles.body,
-                    decoration: _inputDecoration(
-                      label: "Expiry Date (YYYY-MM-DD)",
-                      icon: Icons.calendar_today_outlined,
+                  if (_productExpiryEnabled) ...[
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: expiryController,
+                      style: AppTextStyles.body,
+                      decoration: _inputDecoration(
+                        label: "Expiry Date (YYYY-MM-DD)",
+                        icon: Icons.calendar_today_outlined,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -206,10 +229,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
             ElevatedButton.icon(
               onPressed: () async {
-                DateTime? expiry;
+                DateTime? expiry = p.expiryDate;
 
-                if (expiryController.text.trim().isNotEmpty) {
-                  expiry = DateTime.tryParse(expiryController.text.trim());
+                if (_productExpiryEnabled) {
+                  if (expiryController.text.trim().isNotEmpty) {
+                    expiry = DateTime.tryParse(expiryController.text.trim());
+                  } else {
+                    expiry = null;
+                  }
                 }
 
                 await _productDao.updateProduct(

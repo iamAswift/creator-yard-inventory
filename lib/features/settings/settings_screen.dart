@@ -57,6 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _allowNegativeStock = false;
   bool _requireBarcode = false;
+  bool _productExpiryEnabled = true;
 
   // ============================================================
   // STATE
@@ -187,6 +188,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ) ??
           'false';
 
+      final productExpiryEnabled = await widget.settingsDao
+          .getBoolSettingOrDefault(
+            BusinessSettings.productExpiryEnabled,
+            defaultValue: true,
+          );
+
       // --------------------------------------------------------
       // STAFF DEBT
       // --------------------------------------------------------
@@ -200,6 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       setState(() {
+        _productExpiryEnabled = productExpiryEnabled;
         _currencyController.text = currency;
 
         _currencyCodeController.text = currencyCode;
@@ -323,6 +331,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.settingsDao.setSetting(
         BusinessSettings.requireBarcode,
         _requireBarcode.toString(),
+      );
+
+      await widget.settingsDao.setSetting(
+        BusinessSettings.productExpiryEnabled,
+        _productExpiryEnabled.toString(),
       );
 
       // ========================================================
@@ -811,6 +824,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onChanged: (value) {
                               setState(() {
                                 _requireBarcode = value;
+                              });
+                            },
+                          ),
+
+                          _switchTile(
+                            title: 'Product Expiry Dates',
+                            subtitle:
+                                'Enable expiry-date tracking for products.',
+                            value: _productExpiryEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _productExpiryEnabled = value;
                               });
                             },
                           ),

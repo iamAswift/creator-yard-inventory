@@ -83,6 +83,8 @@ class BusinessSettings {
 
   static const String requireBarcode = 'require_barcode';
 
+  static const String productExpiryEnabled = 'product_expiry_enabled';
+
   // ============================================================
   // POS
   // ============================================================

@@ -8,6 +8,16 @@ class DefaultSettings {
 
   static Future<void> initialize(SettingsDao settingsDao) async {
     // ============================================================
+    // INVENTORY
+    // ============================================================
+
+    await _setIfMissing(
+      settingsDao,
+      BusinessSettings.productExpiryEnabled,
+      'true',
+    );
+
+    // ============================================================
     // SUPPLIER MANAGEMENT
     // ============================================================
 
