@@ -394,6 +394,70 @@ Signing credentials and certificates must remain outside the public repository.
 
 ---
 
+## Community & Discussions
+
+Creator Yard is intended to be developed with a community of developers, contributors, and implementation partners.
+
+If you are working with the project and want to ask a question, discuss an idea, explore an architectural decision, or share an improvement, use **GitHub Discussions**.
+
+### 💬 GitHub Discussions
+
+Use Discussions for:
+
+* Development questions
+* Architecture and database discussions
+* Feature ideas
+* Android and POS hardware experiences
+* Integration discussions
+* General project conversations
+* Contribution and collaboration topics
+
+**Start or join a discussion:**
+https://github.com/iamAswift/creator-yard-inventory/discussions
+
+### 🐛 When to use Issues
+
+Use **GitHub Issues** when a discussion has become a concrete development task, such as:
+
+* A confirmed bug
+* A specific implementation task
+* A reproducible problem
+* A clearly defined improvement
+* A documentation task
+
+A feature idea does not need to become an Issue immediately. Discuss the idea first, establish the requirements and approach, and then create an Issue when the work is ready to be planned.
+
+### 🔀 Discussions → Issues → Pull Requests
+
+The intended development flow is:
+
+```text
+Discussion
+   ↓
+Idea / Question / Technical Conversation
+   ↓
+Defined requirement or confirmed problem
+   ↓
+GitHub Issue
+   ↓
+Implementation
+   ↓
+Pull Request
+   ↓
+Review
+   ↓
+Merge
+```
+
+This keeps community conversations open while keeping actionable development work organized.
+
+### 🤝 Community participation
+
+Everyone participating in the Creator Yard community is expected to communicate respectfully, provide useful technical information, and help maintain a constructive development environment.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+
 # Local Database
 
 Creator Yard uses Drift over SQLite for its local operational database.
