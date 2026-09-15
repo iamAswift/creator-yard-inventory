@@ -30,6 +30,9 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
   // Email is enabled by default so existing installations
   // continue working exactly as they did before this setting existed.
   bool _emailEnabled = true;
+  bool _emailCreditWarningEnabled = true;
+  int _emailCreditWarningThreshold = 10;
+  bool _isSavingEmailCreditWarning = false;
 
   bool _isSavingEmailEnabled = false;
   bool _isLoading = true;
@@ -83,6 +86,8 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
         _creditsService.getBalance(),
         _creditsService.getLedger(limit: 50),
         _getEmailEnabled(),
+        _getEmailCreditWarningEnabled(),
+        _getEmailCreditWarningThreshold(),
       ]);
 
       final balance = results[0] as EmailCreditBalance;
@@ -90,6 +95,8 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
       final ledger = results[1] as EmailCreditLedger;
 
       final emailEnabled = results[2] as bool;
+      final emailCreditWarningEnabled = results[3] as bool;
+      final emailCreditWarningThreshold = results[4] as int;
 
       if (!mounted) {
         return;
@@ -99,6 +106,8 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
         _balance = balance;
         _entries = ledger.entries;
         _emailEnabled = emailEnabled;
+        _emailCreditWarningEnabled = emailCreditWarningEnabled;
+        _emailCreditWarningThreshold = emailCreditWarningThreshold;
         _errorMessage = null;
       });
     } catch (e) {
@@ -129,6 +138,32 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
     }
 
     return value.toLowerCase() == 'true';
+  }
+
+  Future<bool> _getEmailCreditWarningEnabled() async {
+    final value = await widget.settingsDao.getSetting(
+      BusinessSettings.emailCreditWarningEnabled,
+    );
+
+    if (value == null) {
+      return true;
+    }
+
+    return value.toLowerCase() == 'true';
+  }
+
+  Future<int> _getEmailCreditWarningThreshold() async {
+    final value = await widget.settingsDao.getSetting(
+      BusinessSettings.emailCreditWarningThreshold,
+    );
+
+    final parsed = int.tryParse(value ?? '');
+
+    if (parsed == null || parsed < 1) {
+      return 10;
+    }
+
+    return parsed;
   }
 
   Future<void> _setEmailEnabled(bool enabled) async {
@@ -260,6 +295,111 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
     }
   }
 
+  Future<void> _setEmailCreditWarningEnabled(bool enabled) async {
+    if (_isSavingEmailCreditWarning) {
+      return;
+    }
+
+    final previousValue = _emailCreditWarningEnabled;
+
+    setState(() {
+      _emailCreditWarningEnabled = enabled;
+      _isSavingEmailCreditWarning = true;
+    });
+
+    try {
+      await widget.settingsDao.setSetting(
+        BusinessSettings.emailCreditWarningEnabled,
+        enabled.toString(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled
+                ? 'Email credit warning enabled.'
+                : 'Email credit warning disabled.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _emailCreditWarningEnabled = previousValue;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not update email credit warning: '
+            '${_cleanError(e)}',
+          ),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingEmailCreditWarning = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _setEmailCreditWarningThreshold(int threshold) async {
+    if (threshold < 1) {
+      return;
+    }
+
+    final previousValue = _emailCreditWarningThreshold;
+
+    setState(() {
+      _emailCreditWarningThreshold = threshold;
+    });
+
+    try {
+      await widget.settingsDao.setSetting(
+        BusinessSettings.emailCreditWarningThreshold,
+        threshold.toString(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Email credit warning threshold set to $threshold.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _emailCreditWarningThreshold = previousValue;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not update email credit threshold: '
+            '${_cleanError(e)}',
+          ),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
   Widget _buildEmailSettingsCard(Responsive responsive) {
     return Card(
       margin: EdgeInsets.zero,
@@ -316,6 +456,130 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
                 value: _emailEnabled,
                 onChanged: _isSavingEmailEnabled ? null : _setEmailEnabled,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmailCreditWarningCard(Responsive responsive) {
+    const thresholds = <int>[5, 10, 20, 50, 100];
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: EdgeInsets.all(
+          responsive.isCompact ? AppSpacing.xl : AppSpacing.xxl,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _emailCreditWarningEnabled
+                        ? AppColors.warningLight
+                        : AppColors.surfaceSoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    color: _emailCreditWarningEnabled
+                        ? AppColors.warning
+                        : AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Email Credit Warnings',
+                        style: AppTextStyles.title,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        _emailCreditWarningEnabled
+                            ? 'Show a warning on the Sales screen when '
+                                  'email credits are running low.'
+                            : 'Email credit warnings are disabled.',
+                        style: AppTextStyles.bodySecondary,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Sales will never be blocked by this warning.',
+                        style: AppTextStyles.small,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Switch(
+                    value: _emailCreditWarningEnabled,
+                    onChanged: _isSavingEmailCreditWarning
+                        ? null
+                        : _setEmailCreditWarningEnabled,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Low-credit threshold',
+                        style: AppTextStyles.title,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'Show the low-credit warning when the balance '
+                        'reaches this number of credits.',
+                        style: AppTextStyles.small,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                DropdownButton<int>(
+                  value: thresholds.contains(_emailCreditWarningThreshold)
+                      ? _emailCreditWarningThreshold
+                      : null,
+                  hint: Text(
+                    '$_emailCreditWarningThreshold',
+                    style: AppTextStyles.body,
+                  ),
+                  onChanged: _emailCreditWarningEnabled
+                      ? (value) {
+                          if (value != null) {
+                            _setEmailCreditWarningThreshold(value);
+                          }
+                        }
+                      : null,
+                  items: thresholds
+                      .map(
+                        (threshold) => DropdownMenuItem<int>(
+                          value: threshold,
+                          child: Text(
+                            '$threshold credits',
+                            style: AppTextStyles.body,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
             ),
           ],
         ),
@@ -798,6 +1062,8 @@ class _EmailCreditsScreenState extends State<EmailCreditsScreen>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildEmailSettingsCard(responsive),
+                          const SizedBox(height: AppSpacing.lg),
+                          _buildEmailCreditWarningCard(responsive),
                           const SizedBox(height: AppSpacing.lg),
                           _buildBalanceCard(responsive),
                           const SizedBox(height: AppSpacing.lg),

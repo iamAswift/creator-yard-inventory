@@ -25,6 +25,7 @@ import '../../models/pos_settings.dart';
 
 import 'payment_selector.dart';
 import 'receipt_widget.dart';
+import '../../core/email/email_credits_service.dart';
 import '../../core/email/sale_email_worker.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -48,6 +49,9 @@ class _SalesScreenState extends State<SalesScreen> {
   /// productId -> quantity
   final Map<int, int> cart = {};
 
+  /// productId -> actual unit price for the current sale.
+  final Map<int, int> cartPrices = {};
+
   String paymentMethod = 'cash';
 
   PosSettings? _posSettings;
@@ -57,6 +61,15 @@ class _SalesScreenState extends State<SalesScreen> {
 
   String _searchQuery = '';
   int? _selectedCategoryId;
+
+  // ============================================================
+  // EMAIL CREDIT WARNING
+  // ============================================================
+
+  late final EmailCreditsService emailCreditsService;
+  bool _emailCreditWarningEnabled = true;
+  String? _emailCreditWarningMessage;
+  bool _emailCreditWarningIsError = false;
 
   // ============================================================
   // INIT
@@ -70,10 +83,83 @@ class _SalesScreenState extends State<SalesScreen> {
     productDao = ProductDao(db);
     categoryDao = CategoryDao(db);
     settingsDao = SettingsDao(db);
+    emailCreditsService = EmailCreditsService(settingsDao: settingsDao);
 
     _loadPosSettings();
     _loadCategories();
     _loadProducts();
+    _loadEmailCreditWarning();
+  }
+
+  // ============================================================
+  // EMAIL CREDIT WARNING
+  // ============================================================
+
+  Future<void> _loadEmailCreditWarning() async {
+    try {
+      final warningEnabledValue = await settingsDao.getSetting(
+        BusinessSettings.emailCreditWarningEnabled,
+      );
+
+      final thresholdValue = await settingsDao.getSetting(
+        BusinessSettings.emailCreditWarningThreshold,
+      );
+
+      final warningEnabled = warningEnabledValue == null
+          ? true
+          : warningEnabledValue.toLowerCase() == 'true';
+
+      final parsedThreshold = int.tryParse(thresholdValue ?? '');
+      final threshold = parsedThreshold == null || parsedThreshold < 1
+          ? 10
+          : parsedThreshold;
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _emailCreditWarningEnabled = warningEnabled;
+      });
+
+      if (!warningEnabled) {
+        return;
+      }
+
+      final balance = await emailCreditsService.getBalance();
+
+      if (!mounted) {
+        return;
+      }
+
+      final creditBalance = balance.balance;
+
+      String? message;
+      bool isError = false;
+
+      if (creditBalance <= 0) {
+        message = 'Email credits unavailable — sale emails cannot be sent.';
+        isError = true;
+      } else if (creditBalance <= threshold) {
+        message = 'Email credits low — $creditBalance credits remaining.';
+      }
+
+      setState(() {
+        _emailCreditWarningMessage = message;
+        _emailCreditWarningIsError = isError;
+      });
+    } catch (e) {
+      debugPrint('Could not load email credit warning: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _emailCreditWarningMessage = null;
+        _emailCreditWarningIsError = false;
+      });
+    }
   }
 
   // ============================================================
@@ -227,6 +313,10 @@ class _SalesScreenState extends State<SalesScreen> {
   // TOTALS
   // ============================================================
 
+  int _getCartUnitPrice(Product product) {
+    return cartPrices[product.id] ?? product.sellingPrice.toInt();
+  }
+
   int get total {
     return cart.entries.fold<int>(0, (sum, entry) {
       final product = _findProduct(entry.key);
@@ -235,7 +325,7 @@ class _SalesScreenState extends State<SalesScreen> {
         return sum;
       }
 
-      return sum + (entry.value * product.sellingPrice.toInt());
+      return sum + (entry.value * _getCartUnitPrice(product));
     });
   }
 
@@ -558,7 +648,8 @@ class _SalesScreenState extends State<SalesScreen> {
         // LINE TOTAL
         // ======================================================
 
-        final lineTotal = qty * product.sellingPrice.toInt();
+        final unitPrice = _getCartUnitPrice(product);
+        final lineTotal = qty * unitPrice;
 
         if (lineTotal <= 0) {
           throw Exception('${product.name} has an invalid sale value.');
@@ -647,7 +738,7 @@ class _SalesScreenState extends State<SalesScreen> {
           SalesCompanion.insert(
             productId: product.id,
             quantity: qty,
-            unitPrice: product.sellingPrice.toInt(),
+            unitPrice: unitPrice,
             totalPrice: lineTotal,
 
             // Historical cost at time of sale.
@@ -751,7 +842,7 @@ class _SalesScreenState extends State<SalesScreen> {
               }
 
               final qty = entry.value;
-              final unitPrice = product.sellingPrice.toInt();
+              final unitPrice = _getCartUnitPrice(product);
               final lineTotal = qty * unitPrice;
 
               emailLines.add(
@@ -817,6 +908,7 @@ class _SalesScreenState extends State<SalesScreen> {
       setState(() {
         cart.clear();
 
+        cartPrices.clear();
         // Return to configured default payment method
         // after a successful sale.
         paymentMethod = _getSafePaymentMethod();
@@ -937,6 +1029,56 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // ============================================================
+  // EMAIL CREDIT WARNING UI
+  // ============================================================
+
+  Widget _buildEmailCreditWarning(Responsive r) {
+    final message = _emailCreditWarningMessage;
+
+    if (!_emailCreditWarningEnabled || message == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isError = _emailCreditWarningIsError;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: r.isCompact ? AppSpacing.md : AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: isError ? AppColors.dangerLight : AppColors.warningLight,
+        border: Border(
+          bottom: BorderSide(
+            color: isError ? AppColors.danger : AppColors.warning,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.warning_amber_rounded,
+            size: 20,
+            color: isError ? AppColors.danger : AppColors.warning,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.small.copyWith(
+                color: isError ? AppColors.danger : AppColors.warning,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
   // BUILD
   // ============================================================
 
@@ -969,26 +1111,33 @@ class _SalesScreenState extends State<SalesScreen> {
       appBar: _buildAppBar(r),
       body: SafeArea(
         top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
+        child: Column(
+          children: [
+            if (_emailCreditWarningMessage != null) _buildEmailCreditWarning(r),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
 
-            /*
-             * Large screens use the horizontal
-             * split layout.
-             *
-             * Tablets use the compact stacked
-             * layout.
-             */
+                  /*
+                   * Large screens use the horizontal
+                   * split layout.
+                   *
+                   * Tablets use the compact stacked
+                   * layout.
+                   */
 
-            final bool useSplitLayout = width >= 1000;
+                  final bool useSplitLayout = width >= 1000;
 
-            if (useSplitLayout) {
-              return _buildSplitLayout(constraints);
-            }
+                  if (useSplitLayout) {
+                    return _buildSplitLayout(constraints);
+                  }
 
-            return _buildStackedLayout(constraints, r);
-          },
+                  return _buildStackedLayout(constraints, r);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2119,7 +2268,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
         final qty = entry.value;
 
-        final lineTotal = qty * product.sellingPrice.toInt();
+        final lineTotal = qty * _getCartUnitPrice(product);
 
         return _buildCartItem(product, qty, lineTotal, compact: compact);
       },
@@ -2199,7 +2348,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   ),
                 ),
                 Text(
-                  '₦${_formatMoney(product.sellingPrice)} × $qty',
+                  '₦${_formatMoney(_getCartUnitPrice(product))} × $qty',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.small.copyWith(
@@ -2210,6 +2359,21 @@ class _SalesScreenState extends State<SalesScreen> {
             ),
           ),
           const SizedBox(width: 2),
+          if (_posSettings?.allowPriceEditing == true)
+            SizedBox(
+              width: compact ? 24 : 26,
+              height: compact ? 26 : 28,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                iconSize: compact ? 12 : 13,
+                tooltip: 'Edit price',
+                color: AppColors.primary,
+                onPressed: () {
+                  _editCartPrice(product);
+                },
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ),
           Text(
             '₦${_formatMoney(lineTotal)}',
             style: AppTextStyles.body.copyWith(
@@ -2328,6 +2492,64 @@ class _SalesScreenState extends State<SalesScreen> {
 
     setState(() {
       cart[product.id] = currentQty + 1;
+      cartPrices.putIfAbsent(product.id, () => product.sellingPrice.toInt());
+    });
+  }
+
+  Future<void> _editCartPrice(Product product) async {
+    if (_processingSale || _posSettings?.allowPriceEditing != true) {
+      return;
+    }
+
+    final newPrice = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController(
+          text: _getCartUnitPrice(product).toString(),
+        );
+        return AlertDialog(
+          title: Text('Edit Price'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Unit price',
+              prefixText: '₦',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = int.tryParse(
+                  controller.text.trim().replaceAll(',', ''),
+                );
+
+                if (value == null || value <= 0) {
+                  return;
+                }
+
+                Navigator.of(context).pop(value);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newPrice == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      cartPrices[product.id] = newPrice;
     });
   }
 
@@ -2345,6 +2567,7 @@ class _SalesScreenState extends State<SalesScreen> {
     setState(() {
       if (currentQty <= 1) {
         cart.remove(product.id);
+        cartPrices.remove(product.id);
       } else {
         cart[product.id] = currentQty - 1;
       }

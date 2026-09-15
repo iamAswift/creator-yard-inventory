@@ -249,10 +249,15 @@ class BusinessSettings {
   // ============================================================
 
   static const String installationId = 'creator_yard_installation_id';
+  static const String emailApiCredential = 'creator_yard_email_api_credential';
 
   // ============================================================
   // EMAIL
   // ===========================================================
 
   static const String emailEnabled = 'email_enabled';
+  static const String emailCreditWarningEnabled =
+      'email_credit_warning_enabled';
+  static const String emailCreditWarningThreshold =
+      'email_credit_warning_threshold';
 }

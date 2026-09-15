@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../core/system/installation_identity.dart';
+import '../../database/business_settings.dart';
 import '../../database/daos/settings_dao.dart';
 
 class EmailCreditPackage {
@@ -125,24 +126,26 @@ class EmailCreditsService {
   static const String _baseUrl =
       'https://creator-yard-email-api.dawn-feather-6cd6.workers.dev';
 
-  static const String _apiToken = String.fromEnvironment(
-    'CREATOR_YARD_EMAIL_API_TOKEN',
-  );
-
   final SettingsDao settingsDao;
 
   Future<String> _getInstallationId() {
     return InstallationIdentity.getInstallationId(settingsDao);
   }
 
-  Map<String, String> _headers() {
-    if (_apiToken.isEmpty) {
-      throw StateError('CREATOR_YARD_EMAIL_API_TOKEN is not configured.');
+  Future<Map<String, String>> _headers() async {
+    final credential = await settingsDao.getSetting(
+      BusinessSettings.emailApiCredential,
+    );
+
+    final normalizedCredential = credential?.trim() ?? '';
+
+    if (normalizedCredential.isEmpty) {
+      throw StateError('Installation credential is not configured.');
     }
 
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $_apiToken',
+      'Authorization': 'Bearer $normalizedCredential',
     };
   }
 
@@ -182,7 +185,6 @@ class EmailCreditsService {
   Future<List<EmailCreditPackage>> getPackages() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/v1/email/credits/packages'),
-      headers: _headers(),
     );
 
     final data = await _decodeResponse(response);
@@ -241,7 +243,7 @@ class EmailCreditsService {
 
     final response = await http.post(
       Uri.parse('$_baseUrl/v1/email/credits/purchase'),
-      headers: _headers(),
+      headers: await _headers(),
       body: jsonEncode({
         'installationId': installationId,
         'packageId': normalizedPackageId,
@@ -277,7 +279,7 @@ class EmailCreditsService {
         '$_baseUrl/v1/email/credits/balance'
         '?installationId=${Uri.encodeQueryComponent(installationId)}',
       ),
-      headers: _headers(),
+      headers: await _headers(),
     );
 
     final data = await _decodeResponse(response);
@@ -311,7 +313,7 @@ class EmailCreditsService {
       },
     );
 
-    final response = await http.get(uri, headers: _headers());
+    final response = await http.get(uri, headers: await _headers());
 
     final data = await _decodeResponse(response);
 
