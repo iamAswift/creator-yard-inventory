@@ -1,15 +1,22 @@
 // lib/features/sales/receipt_widget.dart
 
+import 'dart:convert';
+
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../core/business/business_identity.dart';
+
+import '../../core/email/email_service.dart';
 import '../../core/responsive/responsive.dart';
+
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/business_settings.dart';
@@ -74,6 +81,12 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
 
   bool _isLoadingSettings = true;
 
+  final TextEditingController _customerEmailController =
+      TextEditingController();
+
+  bool _isSendingCustomerReceipt = false;
+  bool _customerReceiptEmailEnabled = false;
+
   // ============================================================
   // INIT
   // ============================================================
@@ -83,6 +96,12 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
     super.initState();
 
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _customerEmailController.dispose();
+    super.dispose();
   }
 
   // ============================================================
@@ -97,38 +116,31 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       // ALWAYS use BusinessIdentity.
       // ========================================================
 
-      final businessName =
-          await BusinessIdentity.getBusinessName(
+      final businessName = await BusinessIdentity.getBusinessName(
         widget.settingsDao,
       );
 
-      final businessTagline =
-          await BusinessIdentity.getBusinessTagline(
+      final businessTagline = await BusinessIdentity.getBusinessTagline(
         widget.settingsDao,
       );
 
-      final businessPhone =
-          await BusinessIdentity.getBusinessPhone(
+      final businessPhone = await BusinessIdentity.getBusinessPhone(
         widget.settingsDao,
       );
 
-      final businessEmail =
-          await BusinessIdentity.getBusinessEmail(
+      final businessEmail = await BusinessIdentity.getBusinessEmail(
         widget.settingsDao,
       );
 
-      final businessAddress =
-          await BusinessIdentity.getBusinessAddress(
+      final businessAddress = await BusinessIdentity.getBusinessAddress(
         widget.settingsDao,
       );
 
-      final businessType =
-          await BusinessIdentity.getBusinessType(
+      final businessType = await BusinessIdentity.getBusinessType(
         widget.settingsDao,
       );
 
-      final businessLogo =
-          await BusinessIdentity.getBusinessLogo(
+      final businessLogo = await BusinessIdentity.getBusinessLogo(
         widget.settingsDao,
       );
 
@@ -136,39 +148,35 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       // RECEIPT-SPECIFIC SETTINGS
       // ========================================================
 
-      final footer =
-          await widget.settingsDao.getSetting(
+      final footer = await widget.settingsDao.getSetting(
         BusinessSettings.receiptFooter,
       );
 
-      final showCashier =
-          await widget.settingsDao.getSetting(
+      final showCashier = await widget.settingsDao.getSetting(
         BusinessSettings.showCashierName,
       );
 
-      final showDateTime =
-          await widget.settingsDao.getSetting(
+      final showDateTime = await widget.settingsDao.getSetting(
         BusinessSettings.showReceiptDateTime,
       );
 
-      final showNumber =
-          await widget.settingsDao.getSetting(
+      final showNumber = await widget.settingsDao.getSetting(
         BusinessSettings.showReceiptNumber,
       );
 
-      final showTax =
-          await widget.settingsDao.getSetting(
+      final showTax = await widget.settingsDao.getSetting(
         BusinessSettings.showReceiptTax,
       );
 
-      final showDiscount =
-          await widget.settingsDao.getSetting(
+      final showDiscount = await widget.settingsDao.getSetting(
         BusinessSettings.showReceiptDiscount,
       );
 
-      final paperSize =
-          await widget.settingsDao.getSetting(
+      final paperSize = await widget.settingsDao.getSetting(
         BusinessSettings.receiptPaperSize,
+      );
+      final customerReceiptEmailEnabled = await widget.settingsDao.getSetting(
+        BusinessSettings.customerReceiptEmailEnabled,
       );
 
       if (!mounted) return;
@@ -190,39 +198,25 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
         // RECEIPT SETTINGS
         // ======================================================
 
-        _footer =
-            footer?.trim().isNotEmpty == true
-                ? footer!.trim()
-                : 'Thank you for your patronage.';
+        _footer = footer?.trim().isNotEmpty == true
+            ? footer!.trim()
+            : 'Thank you for your patronage.';
 
-        _showCashierName = _parseBool(
-          showCashier,
-          defaultValue: true,
-        );
+        _showCashierName = _parseBool(showCashier, defaultValue: true);
 
-        _showReceiptDateTime = _parseBool(
-          showDateTime,
-          defaultValue: true,
-        );
+        _showReceiptDateTime = _parseBool(showDateTime, defaultValue: true);
 
-        _showReceiptNumber = _parseBool(
-          showNumber,
-          defaultValue: true,
-        );
+        _showReceiptNumber = _parseBool(showNumber, defaultValue: true);
 
-        _showReceiptTax = _parseBool(
-          showTax,
+        _showReceiptTax = _parseBool(showTax, defaultValue: false);
+
+        _showReceiptDiscount = _parseBool(showDiscount, defaultValue: true);
+        _customerReceiptEmailEnabled = _parseBool(
+          customerReceiptEmailEnabled,
           defaultValue: false,
         );
 
-        _showReceiptDiscount = _parseBool(
-          showDiscount,
-          defaultValue: true,
-        );
-
-        if (paperSize == '58mm' ||
-            paperSize == '80mm' ||
-            paperSize == 'A4') {
+        if (paperSize == '58mm' || paperSize == '80mm' || paperSize == 'A4') {
           _paperSize = paperSize!;
         }
 
@@ -235,10 +229,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
         _isLoadingSettings = false;
       });
 
-      _showMessage(
-        'Failed to load receipt settings: $e',
-        isError: true,
-      );
+      _showMessage('Failed to load receipt settings: $e', isError: true);
     }
   }
 
@@ -246,10 +237,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // BOOLEAN
   // ============================================================
 
-  bool _parseBool(
-    String? value, {
-    required bool defaultValue,
-  }) {
+  bool _parseBool(String? value, {required bool defaultValue}) {
     if (value == null) {
       return defaultValue;
     }
@@ -278,27 +266,21 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   double get cashTotal {
     return widget.sales.fold(
       0.0,
-      (sum, sale) =>
-          sum +
-          ((sale.cashAmount ?? 0) as num).toDouble(),
+      (sum, sale) => sum + ((sale.cashAmount ?? 0) as num).toDouble(),
     );
   }
 
   double get posTotal {
     return widget.sales.fold(
       0.0,
-      (sum, sale) =>
-          sum +
-          ((sale.posAmount ?? 0) as num).toDouble(),
+      (sum, sale) => sum + ((sale.posAmount ?? 0) as num).toDouble(),
     );
   }
 
   double get transferTotal {
     return widget.sales.fold(
       0.0,
-      (sum, sale) =>
-          sum +
-          ((sale.transferAmount ?? 0) as num).toDouble(),
+      (sum, sale) => sum + ((sale.transferAmount ?? 0) as num).toDouble(),
     );
   }
 
@@ -321,24 +303,17 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // ============================================================
 
   String _formatMoney(num value) {
-    return value.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => ',',
-        );
+    return value
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
   }
 
   // ============================================================
   // LOGO
   // ============================================================
 
-  Widget _buildLogo({
-    required Responsive responsive,
-  }) {
-    final size = responsive.value<double>(
-      compact: 52,
-      tablet: 56,
-      desktop: 58,
-    );
+  Widget _buildLogo({required Responsive responsive}) {
+    final size = responsive.value<double>(compact: 52, tablet: 56, desktop: 58);
 
     final logoWidth = responsive.value<double>(
       compact: 68,
@@ -346,8 +321,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       desktop: 76,
     );
 
-    if (_businessLogo == null ||
-        _businessLogo!.trim().isEmpty) {
+    if (_businessLogo == null || _businessLogo!.trim().isEmpty) {
       return Container(
         width: size,
         height: size,
@@ -421,14 +395,8 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
           ),
           child: Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: responsive.contentMaxWidth,
-              ),
-              child: _buildReceiptPreview(
-                context,
-                responsive,
-                firstSale,
-              ),
+              constraints: BoxConstraints(maxWidth: responsive.contentMaxWidth),
+              child: _buildReceiptPreview(context, responsive, firstSale),
             ),
           ),
         ),
@@ -457,9 +425,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       actions: [
         IconButton(
           tooltip: 'Print Receipt',
-          icon: const Icon(
-            Icons.print_outlined,
-          ),
+          icon: const Icon(Icons.print_outlined),
           onPressed: _printReceipt,
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -477,10 +443,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       appBar: AppBar(
         title: const Text(
           'Receipt',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -488,9 +451,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       ),
       body: Center(
         child: Padding(
-          padding: EdgeInsets.all(
-            responsive.horizontalPadding,
-          ),
+          padding: EdgeInsets.all(responsive.horizontalPadding),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -530,10 +491,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       appBar: AppBar(
         title: const Text(
           'Sale Receipt',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -591,17 +549,11 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
           width: receiptWidth,
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(
-              AppRadius.lg,
-            ),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: 0.035,
-                ),
+                color: Colors.black.withValues(alpha: 0.035),
                 blurRadius: 14,
                 offset: const Offset(0, 5),
               ),
@@ -619,10 +571,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
                   desktop: AppSpacing.xl,
                 ),
               ),
-              _buildReceiptInformation(
-                responsive,
-                firstSale,
-              ),
+              _buildReceiptInformation(responsive, firstSale),
               const SizedBox(height: AppSpacing.md),
               _buildItemsSection(responsive),
               const SizedBox(height: AppSpacing.md),
@@ -642,10 +591,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
           height: responsive.buttonHeight,
           child: ElevatedButton.icon(
             onPressed: _printReceipt,
-            icon: const Icon(
-              Icons.print_outlined,
-              size: 19,
-            ),
+            icon: const Icon(Icons.print_outlined, size: 19),
             label: const Text(
               'PRINT RECEIPT',
               style: TextStyle(
@@ -659,17 +605,74 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  AppRadius.md,
-                ),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
             ),
           ),
         ),
+        if (_customerReceiptEmailEnabled) ...[
+          const SizedBox(height: AppSpacing.md),
+
+          SizedBox(
+            width: receiptWidth,
+            child: TextField(
+              controller: _customerEmailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              enabled: !_isSendingCustomerReceipt,
+              decoration: InputDecoration(
+                labelText: 'Customer Email',
+                hintText: 'customer@example.com',
+                prefixIcon: const Icon(Icons.email_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              onSubmitted: (_) {
+                if (!_isSendingCustomerReceipt) {
+                  _sendCustomerReceipt();
+                }
+              },
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          SizedBox(
+            width: receiptWidth,
+            height: responsive.buttonHeight,
+            child: OutlinedButton.icon(
+              onPressed: _isSendingCustomerReceipt
+                  ? null
+                  : _sendCustomerReceipt,
+              icon: _isSendingCustomerReceipt
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.email_outlined, size: 19),
+              label: Text(
+                _isSendingCustomerReceipt ? 'SENDING...' : 'SEND RECEIPT',
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -678,9 +681,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // BUSINESS HEADER
   // ============================================================
 
-  Widget _buildBusinessHeader(
-    Responsive responsive,
-  ) {
+  Widget _buildBusinessHeader(Responsive responsive) {
     final businessNameSize = responsive.value<double>(
       compact: 18,
       tablet: 19,
@@ -696,60 +697,44 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
     return Center(
       child: Column(
         children: [
-          _buildLogo(
-            responsive: responsive,
-          ),
+          _buildLogo(responsive: responsive),
           const SizedBox(height: AppSpacing.md),
           Text(
             _businessName,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.heading.copyWith(
-              fontSize: businessNameSize,
-            ),
+            style: AppTextStyles.heading.copyWith(fontSize: businessNameSize),
           ),
           if (_businessTagline.trim().isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.xs,
-              ),
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
                 _businessTagline,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.small.copyWith(
-                  fontSize: secondarySize,
-                ),
+                style: AppTextStyles.small.copyWith(fontSize: secondarySize),
               ),
             ),
           if (_businessAddress.trim().isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.xs,
-              ),
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
                 _businessAddress,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.small.copyWith(
-                  fontSize: secondarySize,
-                ),
+                style: AppTextStyles.small.copyWith(fontSize: secondarySize),
               ),
             ),
           if (_businessPhone.trim().isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(
-                top: 2,
-              ),
+              padding: const EdgeInsets.only(top: 2),
               child: Text(
                 _businessPhone,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.small.copyWith(
-                  fontSize: secondarySize,
-                ),
+                style: AppTextStyles.small.copyWith(fontSize: secondarySize),
               ),
             ),
           const SizedBox(height: AppSpacing.sm),
@@ -760,9 +745,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
             ),
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(
-                AppRadius.round,
-              ),
+              borderRadius: BorderRadius.circular(AppRadius.round),
             ),
             child: Text(
               'SALES RECEIPT',
@@ -783,37 +766,24 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // RECEIPT INFORMATION
   // ============================================================
 
-  Widget _buildReceiptInformation(
-    Responsive responsive,
-    dynamic firstSale,
-  ) {
+  Widget _buildReceiptInformation(Responsive responsive, dynamic firstSale) {
     return _buildSection(
       child: Column(
         children: [
-          if (_showCashierName)
-            _infoRow(
-              'Cashier',
-              widget.cashier.name,
-            ),
+          if (_showCashierName) _infoRow('Cashier', widget.cashier.name),
           if (_showReceiptDateTime)
             _infoRow(
               'Date',
-              _formatDateTime(
-                firstSale.createdAt,
-              ),
-              topSpacing: _showCashierName
-                  ? AppSpacing.sm
-                  : 0,
+              _formatDateTime(firstSale.createdAt),
+              topSpacing: _showCashierName ? AppSpacing.sm : 0,
             ),
           if (_showReceiptNumber)
             _infoRow(
               'Receipt No.',
               '#${firstSale.id}',
-              topSpacing:
-                  (_showCashierName ||
-                          _showReceiptDateTime)
-                      ? AppSpacing.sm
-                      : 0,
+              topSpacing: (_showCashierName || _showReceiptDateTime)
+                  ? AppSpacing.sm
+                  : 0,
             ),
         ],
       ),
@@ -824,34 +794,26 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // ITEMS
   // ============================================================
 
-  Widget _buildItemsSection(
-    Responsive responsive,
-  ) {
+  Widget _buildItemsSection(Responsive responsive) {
     return _buildSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionLabel('ITEMS'),
           const SizedBox(height: AppSpacing.sm),
-          ...widget.sales.map(
-            (sale) {
-              final product = _findProduct(
-                sale.productId,
-              );
+          ...widget.sales.map((sale) {
+            final product = _findProduct(sale.productId);
 
-              final productName =
-                  product?.name ??
-                  'Product #${sale.productId}';
+            final productName = product?.name ?? 'Product #${sale.productId}';
 
-              return _buildItemRow(
-                responsive,
-                productName,
-                sale.quantity,
-                sale.unitPrice,
-                sale.totalPrice,
-              );
-            },
-          ),
+            return _buildItemRow(
+              responsive,
+              productName,
+              sale.quantity,
+              sale.unitPrice,
+              sale.totalPrice,
+            );
+          }),
         ],
       ),
     );
@@ -865,55 +827,37 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
     dynamic totalPrice,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   productName,
                   maxLines: 2,
-                  overflow:
-                      TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.body.copyWith(
-                    fontSize:
-                        responsive.isCompact
-                            ? 13
-                            : 14,
+                    fontSize: responsive.isCompact ? 13 : 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(
-                  height: AppSpacing.xs,
-                ),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '$quantity × ₦${_formatMoney(unitPrice)}',
-                  style:
-                      AppTextStyles.small.copyWith(
-                    fontSize: 11,
-                  ),
+                  style: AppTextStyles.small.copyWith(fontSize: 11),
                 ),
               ],
             ),
           ),
-          const SizedBox(
-            width: AppSpacing.md,
-          ),
+          const SizedBox(width: AppSpacing.md),
           Text(
             '₦${_formatMoney(totalPrice)}',
             textAlign: TextAlign.right,
             style: AppTextStyles.body.copyWith(
-              fontSize:
-                  responsive.isCompact
-                      ? 13
-                      : 14,
+              fontSize: responsive.isCompact ? 13 : 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -926,25 +870,16 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // TOTALS
   // ============================================================
 
-  Widget _buildTotalsSection(
-    Responsive responsive,
-  ) {
+  Widget _buildTotalsSection(Responsive responsive) {
     return Column(
       children: [
-        if (_showReceiptDiscount)
-          _infoRow(
-            'Discount',
-            '₦0',
-          ),
+        if (_showReceiptDiscount) _infoRow('Discount', '₦0'),
 
         if (_showReceiptTax)
           _infoRow(
             'Tax',
             '₦0',
-            topSpacing:
-                _showReceiptDiscount
-                    ? AppSpacing.sm
-                    : 0,
+            topSpacing: _showReceiptDiscount ? AppSpacing.sm : 0,
           ),
 
         SizedBox(
@@ -956,46 +891,32 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
         ),
 
         Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
 
           decoration: const BoxDecoration(
             border: BorderDirectional(
-              top: BorderSide(
-                color: AppColors.border,
-              ),
-              bottom: BorderSide(
-                color: AppColors.border,
-              ),
+              top: BorderSide(color: AppColors.border),
+              bottom: BorderSide(color: AppColors.border),
             ),
           ),
 
           child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-            crossAxisAlignment:
-                CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
 
             children: [
               Text(
                 'TOTAL',
                 style: AppTextStyles.title.copyWith(
-                  fontSize:
-                      responsive.isCompact
-                          ? 16
-                          : 17,
+                  fontSize: responsive.isCompact ? 16 : 17,
                 ),
               ),
 
               Text(
                 '₦${_formatMoney(total)}',
                 style: AppTextStyles.price.copyWith(
-                  fontSize:
-                      responsive.isCompact
-                          ? 20
-                          : 22,
+                  fontSize: responsive.isCompact ? 20 : 22,
                   color: AppColors.primary,
                 ),
               ),
@@ -1010,20 +931,15 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // PAYMENT
   // ============================================================
 
-  Widget _buildPaymentSection(
-    Responsive responsive,
-  ) {
-    final hasPayment = cashTotal > 0 ||
-        posTotal > 0 ||
-        transferTotal > 0;
+  Widget _buildPaymentSection(Responsive responsive) {
+    final hasPayment = cashTotal > 0 || posTotal > 0 || transferTotal > 0;
 
     if (!hasPayment) {
       return const SizedBox.shrink();
     }
 
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('PAYMENT'),
         const SizedBox(height: AppSpacing.sm),
@@ -1052,35 +968,19 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
     );
   }
 
-  Widget _paymentRow(
-    String label,
-    double amount,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _paymentRow(String label, double amount, IconData icon, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.xs,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         children: [
           Container(
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: color.withValues(
-                alpha: 0.08,
-              ),
-              borderRadius:
-                  BorderRadius.circular(
-                AppRadius.md,
-              ),
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(
-              icon,
-              size: 17,
-              color: color,
-            ),
+            child: Icon(icon, size: 17, color: color),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -1109,9 +1009,7 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // ============================================================
 
   Widget _buildStatus(dynamic firstSale) {
-    final status = firstSale.status
-        .toString()
-        .toUpperCase();
+    final status = firstSale.status.toString().toUpperCase();
 
     return Container(
       width: double.infinity,
@@ -1121,18 +1019,11 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
       ),
       decoration: BoxDecoration(
         color: AppColors.successLight,
-        borderRadius: BorderRadius.circular(
-          AppRadius.md,
-        ),
-        border: Border.all(
-          color: AppColors.success.withValues(
-            alpha: 0.15,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.15)),
       ),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
             Icons.check_circle_outline,
@@ -1178,20 +1069,12 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // SECTION
   // ============================================================
 
-  Widget _buildSection({
-    required Widget child,
-  }) {
+  Widget _buildSection({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.md,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: AppColors.divider,
-          ),
-        ),
+        border: Border(top: BorderSide(color: AppColors.divider)),
       ),
       child: child,
     );
@@ -1217,28 +1100,14 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // INFO ROW
   // ============================================================
 
-  Widget _infoRow(
-    String label,
-    String value, {
-    double topSpacing = 0,
-  }) {
+  Widget _infoRow(String label, String value, {double topSpacing = 0}) {
     return Padding(
-      padding: EdgeInsets.only(
-        top: topSpacing,
-      ),
+      padding: EdgeInsets.only(top: topSpacing),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.small,
-            ),
-          ),
-          const SizedBox(
-            width: AppSpacing.md,
-          ),
+          Expanded(child: Text(label, style: AppTextStyles.small)),
+          const SizedBox(width: AppSpacing.md),
           Flexible(
             child: Text(
               value,
@@ -1259,52 +1128,123 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // DATE
   // ============================================================
 
-  String _formatDateTime(
-    dynamic date,
-  ) {
+  String _formatDateTime(dynamic date) {
     if (date == null) {
       return 'N/A';
     }
 
-    final value =
-        date is DateTime
-            ? date
-            : DateTime.tryParse(
-                date.toString(),
-              );
+    final value = date is DateTime ? date : DateTime.tryParse(date.toString());
 
     if (value == null) {
       return date.toString();
     }
 
-    final day =
-        value.day.toString().padLeft(
-              2,
-              '0',
-            );
+    final day = value.day.toString().padLeft(2, '0');
 
-    final month =
-        value.month.toString().padLeft(
-              2,
-              '0',
-            );
+    final month = value.month.toString().padLeft(2, '0');
 
-    final year =
-        value.year.toString();
+    final year = value.year.toString();
 
-    final hour =
-        value.hour.toString().padLeft(
-              2,
-              '0',
-            );
+    final hour = value.hour.toString().padLeft(2, '0');
 
-    final minute =
-        value.minute.toString().padLeft(
-              2,
-              '0',
-            );
+    final minute = value.minute.toString().padLeft(2, '0');
 
     return '$day/$month/$year $hour:$minute';
+  }
+
+  // ============================================================
+  // SEND CUSTOMER RECEIPT
+  // ============================================================
+
+  Future<void> _sendCustomerReceipt() async {
+    if (widget.sales.isEmpty || _isSendingCustomerReceipt) {
+      return;
+    }
+
+    final email = _customerEmailController.text.trim();
+
+    if (email.isEmpty) {
+      _showMessage('Please enter the customer email address.', isError: true);
+      return;
+    }
+
+    if (!email.contains('@') || !email.contains('.')) {
+      _showMessage(
+        'Please enter a valid customer email address.',
+        isError: true,
+      );
+      return;
+    }
+
+    final firstSale = widget.sales.first;
+    final saleId = firstSale.id;
+
+    if (saleId == null || saleId <= 0) {
+      _showMessage(
+        'This sale does not have a valid receipt number.',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() {
+      _isSendingCustomerReceipt = true;
+    });
+
+    try {
+      final installationId = await InstallationIdentity.getInstallationId(
+        widget.settingsDao,
+      );
+
+      final pdfBytes = await _generatePdf(
+        PdfPageFormat.a4,
+        widget.sales,
+        widget.cashier,
+        widget.products,
+        businessName: _businessName,
+        businessTagline: _businessTagline,
+        address: _businessAddress,
+        phone: _businessPhone,
+        footer: _footer,
+        receiptLogo: _businessLogo,
+        showCashierName: _showCashierName,
+        showReceiptDateTime: _showReceiptDateTime,
+        showReceiptNumber: _showReceiptNumber,
+        showReceiptTax: _showReceiptTax,
+        showReceiptDiscount: _showReceiptDiscount,
+        paperSize: _paperSize,
+      );
+
+      final contentBase64 = base64Encode(pdfBytes);
+
+      await EmailService.sendCustomerReceipt(
+        settingsDao: widget.settingsDao,
+        installationId: installationId,
+        jobId: saleId,
+        recipient: email,
+        subject: 'Receipt #$saleId - $_businessName',
+        body:
+            'Thank you for your purchase from $_businessName. '
+            'Please find your receipt attached.',
+        filename: 'receipt-$saleId.pdf',
+        contentBase64: contentBase64,
+      );
+
+      _showMessage('Receipt sent successfully to $email.');
+    } on EmailServiceException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (e) {
+      _showMessage(
+        'Could not send the customer receipt. Please try again.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingCustomerReceipt = false;
+        });
+      }
+    }
   }
 
   // ============================================================
@@ -1330,13 +1270,10 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
           footer: _footer,
           receiptLogo: _businessLogo,
           showCashierName: _showCashierName,
-          showReceiptDateTime:
-              _showReceiptDateTime,
-          showReceiptNumber:
-              _showReceiptNumber,
+          showReceiptDateTime: _showReceiptDateTime,
+          showReceiptNumber: _showReceiptNumber,
           showReceiptTax: _showReceiptTax,
-          showReceiptDiscount:
-              _showReceiptDiscount,
+          showReceiptDiscount: _showReceiptDiscount,
           paperSize: _paperSize,
         );
       },
@@ -1347,33 +1284,20 @@ class _ReceiptWidgetState extends State<ReceiptWidget> {
   // MESSAGE
   // ============================================================
 
-  void _showMessage(
-    String message, {
-    bool isError = false,
-  }) {
+  void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
-          style: AppTextStyles.body.copyWith(
-            color: Colors.white,
-            fontSize: 13,
-          ),
+          style: AppTextStyles.body.copyWith(color: Colors.white, fontSize: 13),
         ),
-        backgroundColor:
-            isError
-                ? AppColors.danger
-                : AppColors.textPrimary,
+        backgroundColor: isError ? AppColors.danger : AppColors.textPrimary,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(
-          AppSpacing.lg,
-        ),
+        margin: const EdgeInsets.all(AppSpacing.lg),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            AppRadius.md,
-          ),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
       ),
     );
@@ -1402,7 +1326,17 @@ Future<Uint8List> _generatePdf(
   required bool showReceiptDiscount,
   required String paperSize,
 }) async {
-  final pdf = pw.Document();
+  final regularFontData = await rootBundle.load(
+    'assets/fonts/Roboto-Regular.ttf',
+  );
+  final boldFontData = await rootBundle.load('assets/fonts/Poppins-Bold.ttf');
+
+  final regularFont = pw.Font.ttf(regularFontData);
+  final boldFont = pw.Font.ttf(boldFontData);
+
+  final pdf = pw.Document(
+    theme: pw.ThemeData.withFont(base: regularFont, bold: boldFont),
+  );
 
   // ================================================================
   // TOTALS
@@ -1417,29 +1351,20 @@ Future<Uint8List> _generatePdf(
   double transferTotal = 0;
 
   for (final sale in sales) {
-    total +=
-        (sale.totalPrice as num).toInt();
+    total += (sale.totalPrice as num).toInt();
 
-    cashTotal +=
-        ((sale.cashAmount ?? 0) as num)
-            .toDouble();
+    cashTotal += ((sale.cashAmount ?? 0) as num).toDouble();
 
-    posTotal +=
-        ((sale.posAmount ?? 0) as num)
-            .toDouble();
+    posTotal += ((sale.posAmount ?? 0) as num).toDouble();
 
-    transferTotal +=
-        ((sale.transferAmount ?? 0) as num)
-            .toDouble();
+    transferTotal += ((sale.transferAmount ?? 0) as num).toDouble();
   }
 
   // ================================================================
   // PRODUCT LOOKUP
   // ================================================================
 
-  dynamic findProduct(
-    int productId,
-  ) {
+  dynamic findProduct(int productId) {
     for (final product in products) {
       if (product.id == productId) {
         return product;
@@ -1453,67 +1378,36 @@ Future<Uint8List> _generatePdf(
   // MONEY
   // ================================================================
 
-  String formatMoney(
-    num value,
-  ) {
+  String formatMoney(num value) {
     return value
         .toStringAsFixed(0)
-        .replaceAllMapped(
-          RegExp(
-            r'\B(?=(\d{3})+(?!\d))',
-          ),
-          (match) => ',',
-        );
+        .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
   }
 
   // ================================================================
   // DATE
   // ================================================================
 
-  String formatDate(
-    dynamic date,
-  ) {
+  String formatDate(dynamic date) {
     if (date == null) {
       return 'N/A';
     }
 
-    final value =
-        date is DateTime
-            ? date
-            : DateTime.tryParse(
-                date.toString(),
-              );
+    final value = date is DateTime ? date : DateTime.tryParse(date.toString());
 
     if (value == null) {
       return date.toString();
     }
 
-    final day =
-        value.day.toString().padLeft(
-              2,
-              '0',
-            );
+    final day = value.day.toString().padLeft(2, '0');
 
-    final month =
-        value.month.toString().padLeft(
-              2,
-              '0',
-            );
+    final month = value.month.toString().padLeft(2, '0');
 
-    final year =
-        value.year.toString();
+    final year = value.year.toString();
 
-    final hour =
-        value.hour.toString().padLeft(
-              2,
-              '0',
-            );
+    final hour = value.hour.toString().padLeft(2, '0');
 
-    final minute =
-        value.minute.toString().padLeft(
-              2,
-              '0',
-            );
+    final minute = value.minute.toString().padLeft(2, '0');
 
     return '$day/$month/$year $hour:$minute';
   }
@@ -1526,8 +1420,7 @@ Future<Uint8List> _generatePdf(
 
   switch (paperSize) {
     case '58mm':
-      selectedFormat =
-          const PdfPageFormat(
+      selectedFormat = const PdfPageFormat(
         58 * PdfPageFormat.mm,
         297 * PdfPageFormat.mm,
         marginAll: 12,
@@ -1535,14 +1428,12 @@ Future<Uint8List> _generatePdf(
       break;
 
     case 'A4':
-      selectedFormat =
-          PdfPageFormat.a4;
+      selectedFormat = PdfPageFormat.a4;
       break;
 
     case '80mm':
     default:
-      selectedFormat =
-          const PdfPageFormat(
+      selectedFormat = const PdfPageFormat(
         80 * PdfPageFormat.mm,
         297 * PdfPageFormat.mm,
         marginAll: 14,
@@ -1556,26 +1447,21 @@ Future<Uint8List> _generatePdf(
 
   pw.MemoryImage? logoImage;
 
-  if (receiptLogo != null &&
-      receiptLogo.trim().isNotEmpty) {
+  if (receiptLogo != null && receiptLogo.trim().isNotEmpty) {
     try {
-      final file =
-          File(receiptLogo);
+      final file = File(receiptLogo);
 
       if (file.existsSync()) {
-        final bytes =
-            await file.readAsBytes();
+        final bytes = await file.readAsBytes();
 
-        logoImage =
-            pw.MemoryImage(bytes);
+        logoImage = pw.MemoryImage(bytes);
       }
     } catch (_) {
       logoImage = null;
     }
   }
 
-  final firstSale =
-      sales.first;
+  final firstSale = sales.first;
 
   // ================================================================
   // PDF
@@ -1583,205 +1469,120 @@ Future<Uint8List> _generatePdf(
 
   pdf.addPage(
     pw.Page(
-      pageFormat:
-          selectedFormat,
+      pageFormat: selectedFormat,
 
-      margin:
-          selectedFormat.marginLeft >
-                  0
-              ? pw.EdgeInsets.fromLTRB(
-                  selectedFormat
-                      .marginLeft,
-                  selectedFormat
-                      .marginTop,
-                  selectedFormat
-                      .marginRight,
-                  selectedFormat
-                      .marginBottom,
-                )
-              : const pw.EdgeInsets.all(
-                  14,
-                ),
+      margin: selectedFormat.marginLeft > 0
+          ? pw.EdgeInsets.fromLTRB(
+              selectedFormat.marginLeft,
+              selectedFormat.marginTop,
+              selectedFormat.marginRight,
+              selectedFormat.marginBottom,
+            )
+          : const pw.EdgeInsets.all(14),
 
       build: (context) {
         return pw.Column(
-          crossAxisAlignment:
-              pw.CrossAxisAlignment
-                  .start,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
 
           children: [
             // ======================================================
             // BUSINESS HEADER
             // ======================================================
-
             pw.Center(
-              child:
-                  pw.Column(
+              child: pw.Column(
                 children: [
-                  if (logoImage !=
-                      null)
+                  if (logoImage != null)
                     pw.Container(
                       width: 55,
                       height: 55,
-                      margin:
-                          const pw.EdgeInsets
-                              .only(
-                        bottom: 8,
-                      ),
-                      child:
-                          pw.Image(
-                        logoImage!,
-                        fit:
-                            pw.BoxFit
-                                .contain,
-                      ),
+                      margin: const pw.EdgeInsets.only(bottom: 8),
+                      child: pw.Image(logoImage!, fit: pw.BoxFit.contain),
                     ),
 
                   pw.Text(
                     businessName,
-                    textAlign:
-                        pw.TextAlign
-                            .center,
-                    style:
-                        pw.TextStyle(
-                      fontSize:
-                          paperSize ==
-                                  'A4'
-                              ? 20
-                              : 16,
-                      fontWeight:
-                          pw.FontWeight
-                              .bold,
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      fontSize: paperSize == 'A4' ? 20 : 16,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
 
-                  if (businessTagline
-                      .trim()
-                      .isNotEmpty)
+                  if (businessTagline.trim().isNotEmpty)
                     pw.Padding(
-                      padding:
-                          const pw.EdgeInsets
-                              .only(
-                        top: 3,
-                      ),
-                      child:
-                          pw.Text(
+                      padding: const pw.EdgeInsets.only(top: 3),
+                      child: pw.Text(
                         businessTagline,
-                        textAlign:
-                            pw.TextAlign
-                                .center,
-                        style:
-                            const pw.TextStyle(
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
                           fontSize: 8,
-                          color:
-                              PdfColors
-                                  .grey,
+                          color: PdfColors.grey,
                         ),
                       ),
                     ),
 
-                  if (address
-                      .trim()
-                      .isNotEmpty)
+                  if (address.trim().isNotEmpty)
                     pw.Padding(
-                      padding:
-                          const pw.EdgeInsets
-                              .only(
-                        top: 3,
-                      ),
-                      child:
-                          pw.Text(
+                      padding: const pw.EdgeInsets.only(top: 3),
+                      child: pw.Text(
                         address,
-                        textAlign:
-                            pw.TextAlign
-                                .center,
-                        style:
-                            const pw.TextStyle(
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
                           fontSize: 8,
-                          color:
-                              PdfColors
-                                  .grey,
+                          color: PdfColors.grey,
                         ),
                       ),
                     ),
 
-                  if (phone
-                      .trim()
-                      .isNotEmpty)
+                  if (phone.trim().isNotEmpty)
                     pw.Padding(
-                      padding:
-                          const pw.EdgeInsets
-                              .only(
-                        top: 2,
-                      ),
-                      child:
-                          pw.Text(
+                      padding: const pw.EdgeInsets.only(top: 2),
+                      child: pw.Text(
                         phone,
-                        textAlign:
-                            pw.TextAlign
-                                .center,
-                        style:
-                            const pw.TextStyle(
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
                           fontSize: 8,
-                          color:
-                              PdfColors
-                                  .grey,
+                          color: PdfColors.grey,
                         ),
                       ),
                     ),
 
-                  pw.SizedBox(
-                    height: 6,
-                  ),
+                  pw.SizedBox(height: 6),
 
                   pw.Text(
                     'SALES RECEIPT',
-                    style:
-                        const pw.TextStyle(
+                    style: const pw.TextStyle(
                       fontSize: 8,
-                      fontWeight:
-                          pw.FontWeight
-                              .bold,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
 
-            pw.SizedBox(
-              height: 10,
-            ),
+            pw.SizedBox(height: 10),
 
             pw.Divider(),
 
             // ======================================================
             // SALE INFORMATION
             // ======================================================
-
             if (showCashierName)
               pw.Row(
-                mainAxisAlignment:
-                    pw.MainAxisAlignment
-                        .spaceBetween,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     'Cashier',
-                    style:
-                        const pw.TextStyle(
+                    style: const pw.TextStyle(
                       fontSize: 8,
-                      color:
-                          PdfColors
-                              .grey,
+                      color: PdfColors.grey,
                     ),
                   ),
                   pw.Text(
                     cashier.name,
-                    style:
-                        const pw.TextStyle(
+                    style: const pw.TextStyle(
                       fontSize: 8,
-                      fontWeight:
-                          pw.FontWeight
-                              .bold,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                 ],
@@ -1789,36 +1590,20 @@ Future<Uint8List> _generatePdf(
 
             if (showReceiptDateTime)
               pw.Padding(
-                padding:
-                    const pw.EdgeInsets
-                        .only(
-                  top: 4,
-                ),
-                child:
-                    pw.Row(
-                  mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
                       'Date',
-                      style:
-                          const pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8,
-                        color:
-                            PdfColors
-                                .grey,
+                        color: PdfColors.grey,
                       ),
                     ),
                     pw.Text(
-                      formatDate(
-                        firstSale
-                            .createdAt,
-                      ),
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
+                      formatDate(firstSale.createdAt),
+                      style: const pw.TextStyle(fontSize: 8),
                     ),
                   ],
                 ),
@@ -1826,33 +1611,20 @@ Future<Uint8List> _generatePdf(
 
             if (showReceiptNumber)
               pw.Padding(
-                padding:
-                    const pw.EdgeInsets
-                        .only(
-                  top: 4,
-                ),
-                child:
-                    pw.Row(
-                  mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
                       'Receipt No.',
-                      style:
-                          const pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8,
-                        color:
-                            PdfColors
-                                .grey,
+                        color: PdfColors.grey,
                       ),
                     ),
                     pw.Text(
                       '#${firstSale.id}',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
+                      style: const pw.TextStyle(fontSize: 8),
                     ),
                   ],
                 ),
@@ -1863,274 +1635,163 @@ Future<Uint8List> _generatePdf(
             // ======================================================
             // ITEMS
             // ======================================================
-
             pw.Text(
               'ITEMS',
-              style:
-                  const pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 8,
-                fontWeight:
-                    pw.FontWeight
-                        .bold,
+                fontWeight: pw.FontWeight.bold,
               ),
             ),
 
-            pw.SizedBox(
-              height: 5,
-            ),
+            pw.SizedBox(height: 5),
 
-            ...sales.map(
-              (sale) {
-                final product =
-                    findProduct(
-                  sale.productId,
-                );
+            ...sales.map((sale) {
+              final product = findProduct(sale.productId);
 
-                final productName =
-                    product?.name ??
-                        'Product #${sale.productId}';
+              final productName = product?.name ?? 'Product #${sale.productId}';
 
-                return pw.Padding(
-                  padding:
-                      const pw.EdgeInsets
-                          .symmetric(
-                    vertical: 4,
-                  ),
-                  child:
-                      pw.Row(
-                    crossAxisAlignment:
-                        pw.CrossAxisAlignment
-                            .start,
-                    children: [
-                      pw.Expanded(
-                        child:
-                            pw.Column(
-                          crossAxisAlignment:
-                              pw.CrossAxisAlignment
-                                  .start,
-                          children: [
-                            pw.Text(
-                              productName,
-                              style:
-                                  const pw.TextStyle(
-                                fontSize:
-                                    9,
-                                fontWeight:
-                                    pw.FontWeight
-                                        .bold,
-                              ),
+              return pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            productName,
+                            style: const pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
                             ),
-                            pw.SizedBox(
-                              height: 2,
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            '${sale.quantity} × ₦${formatMoney(sale.unitPrice)}',
+                            style: const pw.TextStyle(
+                              fontSize: 7,
+                              color: PdfColors.grey,
                             ),
-                            pw.Text(
-                              '${sale.quantity} × ₦${formatMoney(sale.unitPrice)}',
-                              style:
-                                  const pw.TextStyle(
-                                fontSize:
-                                    7,
-                                color:
-                                    PdfColors
-                                        .grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      pw.Text(
-                        '₦${formatMoney(sale.totalPrice)}',
-                        style:
-                            const pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight:
-                              pw.FontWeight
-                                  .bold,
-                        ),
+                    ),
+                    pw.Text(
+                      '₦${formatMoney(sale.totalPrice)}',
+                      style: const pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            }),
 
             pw.Divider(),
 
             // ======================================================
             // DISCOUNT
             // ======================================================
-
             if (showReceiptDiscount)
               pw.Row(
-                mainAxisAlignment:
-                    pw.MainAxisAlignment
-                        .spaceBetween,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     'Discount',
-                    style:
-                        const pw.TextStyle(
+                    style: const pw.TextStyle(
                       fontSize: 8,
-                      color:
-                          PdfColors
-                              .grey,
+                      color: PdfColors.grey,
                     ),
                   ),
-                  pw.Text(
-                    '₦0',
-                    style:
-                        const pw.TextStyle(
-                      fontSize: 8,
-                    ),
-                  ),
+                  pw.Text('₦0', style: const pw.TextStyle(fontSize: 8)),
                 ],
               ),
 
             // ======================================================
             // TAX
             // ======================================================
-
             if (showReceiptTax)
               pw.Padding(
-                padding:
-                    const pw.EdgeInsets
-                        .only(
-                  top: 4,
-                ),
-                child:
-                    pw.Row(
-                  mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
                       'Tax',
-                      style:
-                          const pw.TextStyle(
+                      style: const pw.TextStyle(
                         fontSize: 8,
-                        color:
-                            PdfColors
-                                .grey,
+                        color: PdfColors.grey,
                       ),
                     ),
-                    pw.Text(
-                      '₦0',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
-                    ),
+                    pw.Text('₦0', style: const pw.TextStyle(fontSize: 8)),
                   ],
                 ),
               ),
 
-            pw.SizedBox(
-              height: 7,
-            ),
+            pw.SizedBox(height: 7),
 
             // ======================================================
             // TOTAL
             // ======================================================
-
             pw.Row(
-              mainAxisAlignment:
-                  pw.MainAxisAlignment
-                      .spaceBetween,
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
                   'TOTAL',
-                  style:
-                      const pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        pw.FontWeight
-                            .bold,
+                    fontWeight: pw.FontWeight.bold,
                   ),
                 ),
                 pw.Text(
                   '₦${formatMoney(total)}',
-                  style:
-                      const pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        pw.FontWeight
-                            .bold,
+                    fontWeight: pw.FontWeight.bold,
                   ),
                 ),
               ],
             ),
 
-            pw.SizedBox(
-              height: 10,
-            ),
+            pw.SizedBox(height: 10),
 
             // ======================================================
             // PAYMENT
             // ======================================================
-
             pw.Text(
               'PAYMENT',
-              style:
-                  const pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 8,
-                fontWeight:
-                    pw.FontWeight
-                        .bold,
+                fontWeight: pw.FontWeight.bold,
               ),
             ),
 
-            pw.SizedBox(
-              height: 5,
-            ),
+            pw.SizedBox(height: 5),
 
             if (cashTotal > 0)
               pw.Row(
-                mainAxisAlignment:
-                    pw.MainAxisAlignment
-                        .spaceBetween,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(
-                    'Cash',
-                    style:
-                        const pw.TextStyle(
-                      fontSize: 8,
-                    ),
-                  ),
+                  pw.Text('Cash', style: const pw.TextStyle(fontSize: 8)),
                   pw.Text(
                     '₦${formatMoney(cashTotal)}',
-                    style:
-                        const pw.TextStyle(
-                      fontSize: 8,
-                    ),
+                    style: const pw.TextStyle(fontSize: 8),
                   ),
                 ],
               ),
 
             if (posTotal > 0)
               pw.Padding(
-                padding:
-                    const pw.EdgeInsets
-                        .only(
-                  top: 4,
-                ),
-                child:
-                    pw.Row(
-                  mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(
-                      'POS',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
-                    ),
+                    pw.Text('POS', style: const pw.TextStyle(fontSize: 8)),
                     pw.Text(
                       '₦${formatMoney(posTotal)}',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
+                      style: const pw.TextStyle(fontSize: 8),
                     ),
                   ],
                 ),
@@ -2138,85 +1799,48 @@ Future<Uint8List> _generatePdf(
 
             if (transferTotal > 0)
               pw.Padding(
-                padding:
-                    const pw.EdgeInsets
-                        .only(
-                  top: 4,
-                ),
-                child:
-                    pw.Row(
-                  mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(
-                      'Transfer',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
-                    ),
+                    pw.Text('Transfer', style: const pw.TextStyle(fontSize: 8)),
                     pw.Text(
                       '₦${formatMoney(transferTotal)}',
-                      style:
-                          const pw.TextStyle(
-                        fontSize: 8,
-                      ),
+                      style: const pw.TextStyle(fontSize: 8),
                     ),
                   ],
                 ),
               ),
 
-            pw.SizedBox(
-              height: 8,
-            ),
+            pw.SizedBox(height: 8),
 
             pw.Divider(),
 
             // ======================================================
             // STATUS
             // ======================================================
-
             pw.Center(
-              child:
-                  pw.Text(
-                firstSale.status
-                    .toString()
-                    .toUpperCase(),
-                style:
-                    const pw.TextStyle(
-                  color:
-                      PdfColors.green,
+              child: pw.Text(
+                firstSale.status.toString().toUpperCase(),
+                style: const pw.TextStyle(
+                  color: PdfColors.green,
                   fontSize: 8,
-                  fontWeight:
-                      pw.FontWeight
-                          .bold,
+                  fontWeight: pw.FontWeight.bold,
                 ),
               ),
             ),
 
-            pw.SizedBox(
-              height: 10,
-            ),
+            pw.SizedBox(height: 10),
 
             // ======================================================
             // FOOTER
             // ======================================================
-
             if (footer.trim().isNotEmpty)
               pw.Center(
-                child:
-                    pw.Text(
+                child: pw.Text(
                   footer,
-                  textAlign:
-                      pw.TextAlign
-                          .center,
-                  style:
-                      const pw.TextStyle(
-                    fontSize: 8,
-                    color:
-                        PdfColors.grey,
-                  ),
+                  textAlign: pw.TextAlign.center,
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
                 ),
               ),
           ],
@@ -2227,4 +1851,3 @@ Future<Uint8List> _generatePdf(
 
   return pdf.save();
 }
-

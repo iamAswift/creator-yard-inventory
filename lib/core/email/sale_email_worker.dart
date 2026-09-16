@@ -99,6 +99,7 @@ class SaleEmailWorker {
       );
 
       await EmailService.sendSaleEmail(
+        settingsDao: _settingsDao,
         installationId: installationId,
         jobId: job.id,
         recipient: job.recipient,
