@@ -135,6 +135,66 @@ class BackupService {
     }
   }
 
+  /// Replaces the live database with a validated backup.
+  ///
+  /// The current live database is moved to a temporary safety file before
+  /// the replacement. If anything fails, the original database is restored.
+  static Future<void> replaceLiveDatabase(File backupFile) async {
+    await validateBackup(backupFile);
+
+    final liveDatabasePath = await getDatabaseFilePath();
+    final liveDatabaseFile = File(liveDatabasePath);
+
+    if (!await liveDatabaseFile.exists()) {
+      throw StateError('Live database file does not exist.');
+    }
+
+    final safetyPath = '$liveDatabasePath.restore_safety';
+    final safetyFile = File(safetyPath);
+
+    if (await safetyFile.exists()) {
+      await safetyFile.delete();
+    }
+
+    await closeDatabase();
+
+    try {
+      await liveDatabaseFile.rename(safetyPath);
+
+      try {
+        await backupFile.copy(liveDatabasePath);
+
+        final restoredFile = File(liveDatabasePath);
+        await validateBackup(restoredFile);
+
+        await safetyFile.delete();
+      } catch (e) {
+        final restoredFile = File(liveDatabasePath);
+
+        if (await restoredFile.exists()) {
+          try {
+            await restoredFile.delete();
+          } catch (_) {}
+        }
+
+        if (await safetyFile.exists()) {
+          await safetyFile.rename(liveDatabasePath);
+        }
+
+        throw StateError('Database restore failed: $e');
+      }
+    } catch (e) {
+      if (await safetyFile.exists() &&
+          !await liveDatabaseFile.exists()) {
+        try {
+          await safetyFile.rename(liveDatabasePath);
+        } catch (_) {}
+      }
+
+      rethrow;
+    }
+  }
+
   /// Returns all local backups, newest first.
   static Future<List<File>> getBackups() async {
     final backupDirectory = await _getBackupDirectory();
