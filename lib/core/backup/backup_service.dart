@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:sqlite3/sqlite3.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -95,6 +96,43 @@ class BackupService {
     await _removeOldBackups();
 
     return backupFile;
+  }
+
+  /// Validates that [backupFile] is a readable and structurally
+  /// valid SQLite database.
+  ///
+  /// The backup is opened independently so the live application database
+  /// remains untouched.
+  static Future<void> validateBackup(File backupFile) async {
+    if (!await backupFile.exists()) {
+      throw StateError('Backup file does not exist.');
+    }
+
+    final size = await backupFile.length();
+
+    if (size == 0) {
+      throw StateError('Backup file is empty.');
+    }
+
+    final database = sqlite3.open(backupFile.path);
+
+    try {
+      final results = database.select('PRAGMA integrity_check');
+
+      if (results.isEmpty) {
+        throw StateError('Backup database integrity check returned no result.');
+      }
+
+      final integrityResult = results.first.values.first;
+
+      if (integrityResult != 'ok') {
+        throw StateError(
+          'Backup database failed SQLite integrity check: $integrityResult',
+        );
+      }
+    } finally {
+      database.close();
+    }
   }
 
   /// Returns all local backups, newest first.
