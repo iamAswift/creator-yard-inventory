@@ -66,6 +66,36 @@ AppDatabase getDatabase() {
   return _instance!;
 }
 
+/// Closes the current database and clears all cached database/DAO instances.
+///
+/// This is required before replacing the SQLite database file during restore.
+Future<void> closeDatabase() async {
+  final db = _instance;
+
+  if (db != null) {
+    await db.close();
+  }
+
+  _instance = null;
+
+  _userDao = null;
+  _userProfileDao = null;
+  _productDao = null;
+  _stockMovementDao = null;
+  _supplierDao = null;
+  _salesDao = null;
+  _settingsDao = null;
+  _categoryDao = null;
+  _attendanceDao = null;
+  _staffPurchaseDao = null;
+  _staffDebtPaymentDao = null;
+  _supplierDeliveryDao = null;
+  _supplierDeliveryItemDao = null;
+  _supplierPaymentDao = null;
+  _supplierPaymentAllocationDao = null;
+  _emailQueueDao = null;
+}
+
 Future<void> initializeDatabaseSettings() {
   return _settingsInitialization ??= DefaultSettings.initialize(
     getSettingsDao(),
@@ -198,7 +228,6 @@ SaleEmailQueueDao getSaleEmailQueueDao() {
   _emailQueueDao ??= SaleEmailQueueDao(getDatabase());
 
   return _emailQueueDao!;
-
 }
 
 @DriftDatabase(
@@ -381,6 +410,12 @@ class AppDatabase extends _$AppDatabase {
       // if you add more versions later, handle them here
     },
   );
+}
+
+/// Returns the path of the live SQLite database file.
+Future<String> getDatabaseFilePath() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  return p.join(dbFolder.path, 'supermarket.sqlite');
 }
 
 // Lazy database connection
