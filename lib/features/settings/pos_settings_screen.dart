@@ -11,14 +11,10 @@ import '../../models/pos_settings.dart';
 class PosSettingsScreen extends StatefulWidget {
   final SettingsDao settingsDao;
 
-  const PosSettingsScreen({
-    super.key,
-    required this.settingsDao,
-  });
+  const PosSettingsScreen({super.key, required this.settingsDao});
 
   @override
-  State<PosSettingsScreen> createState() =>
-      _PosSettingsScreenState();
+  State<PosSettingsScreen> createState() => _PosSettingsScreenState();
 }
 
 class _PosSettingsScreenState extends State<PosSettingsScreen> {
@@ -26,8 +22,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // CONTROLLERS
   // ============================================================
 
-  final _maximumDiscountController =
-      TextEditingController();
+  final _maximumDiscountController = TextEditingController();
 
   // ============================================================
   // SERVICE
@@ -60,6 +55,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
 
   bool _requireCustomerName = false;
   bool _requireCustomerPhone = false;
+  bool _customerReceiptEmailEnabled = false;
 
   // ============================================================
   // PRICING
@@ -94,11 +90,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // OPTIONS
   // ============================================================
 
-  static const List<String> _paymentMethodOptions = [
-    'cash',
-    'pos',
-    'transfer',
-  ];
+  static const List<String> _paymentMethodOptions = ['cash', 'pos', 'transfer'];
 
   static const List<String> _displayDeviceOptions = [
     'iPad',
@@ -113,9 +105,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   void initState() {
     super.initState();
 
-    _posSettingsService = PosSettingsService(
-      settingsDao: widget.settingsDao,
-    );
+    _posSettingsService = PosSettingsService(settingsDao: widget.settingsDao);
 
     _loadSettings();
   }
@@ -126,8 +116,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
 
   Future<void> _loadSettings() async {
     try {
-      final PosSettings settings =
-          await _posSettingsService.load();
+      final PosSettings settings = await _posSettingsService.load();
 
       if (!mounted) return;
 
@@ -143,11 +132,9 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
         _paymentTransfer = settings.paymentTransfer;
 
         _defaultPaymentMethod =
-            _paymentMethodOptions.contains(
-          settings.defaultPaymentMethod,
-        )
-                ? settings.defaultPaymentMethod
-                : _firstEnabledPaymentMethod();
+            _paymentMethodOptions.contains(settings.defaultPaymentMethod)
+            ? settings.defaultPaymentMethod
+            : _firstEnabledPaymentMethod();
 
         // --------------------------------------------------------
         // DISCOUNTS / PRICING
@@ -155,45 +142,38 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
 
         _allowDiscount = settings.allowDiscount;
 
-        _maximumDiscountController.text =
-            settings.maximumDiscount.toString();
+        _maximumDiscountController.text = settings.maximumDiscount.toString();
 
-        _allowPriceEditing =
-            settings.allowPriceEditing;
+        _allowPriceEditing = settings.allowPriceEditing;
 
-        _requireDiscountApproval =
-            settings.requireDiscountApproval;
+        _requireDiscountApproval = settings.requireDiscountApproval;
 
         // --------------------------------------------------------
         // CUSTOMER
         // --------------------------------------------------------
 
-        _requireCustomerName =
-            settings.requireCustomerName;
+        _requireCustomerName = settings.requireCustomerName;
 
-        _requireCustomerPhone =
-            settings.requireCustomerPhone;
+        _requireCustomerPhone = settings.requireCustomerPhone;
+
+        _customerReceiptEmailEnabled = settings.customerReceiptEmailEnabled;
 
         // --------------------------------------------------------
         // RECEIPT
         // --------------------------------------------------------
 
-        _automaticallyPrintReceipt =
-            settings.automaticallyPrintReceipt;
+        _automaticallyPrintReceipt = settings.automaticallyPrintReceipt;
 
         // --------------------------------------------------------
         // CUSTOMER DISPLAY
         // --------------------------------------------------------
 
-        _showCustomerDisplay =
-            settings.showCustomerDisplay;
+        _showCustomerDisplay = settings.showCustomerDisplay;
 
         _customerDisplayDevice =
-            _displayDeviceOptions.contains(
-          settings.customerDisplayDevice,
-        )
-                ? settings.customerDisplayDevice
-                : _displayDeviceOptions.first;
+            _displayDeviceOptions.contains(settings.customerDisplayDevice)
+            ? settings.customerDisplayDevice
+            : _displayDeviceOptions.first;
 
         _isLoading = false;
       });
@@ -204,10 +184,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
         _isLoading = false;
       });
 
-      _showMessage(
-        'Failed to load POS settings: $e',
-        isError: true,
-      );
+      _showMessage('Failed to load POS settings: $e', isError: true);
     }
   }
 
@@ -227,17 +204,14 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
       // VALIDATE MAXIMUM DISCOUNT
       // --------------------------------------------------------
 
-      final maximumDiscount =
-          double.tryParse(
+      final maximumDiscount = double.tryParse(
         _maximumDiscountController.text.trim(),
       );
 
       if (maximumDiscount == null ||
           maximumDiscount < 0 ||
           maximumDiscount > 100) {
-        throw Exception(
-          'Maximum discount must be between 0% and 100%.',
-        );
+        throw Exception('Maximum discount must be between 0% and 100%.');
       }
 
       // --------------------------------------------------------
@@ -245,21 +219,15 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
       // --------------------------------------------------------
 
       if (!_hasPaymentMethodEnabled()) {
-        throw Exception(
-          'At least one payment method must be enabled.',
-        );
+        throw Exception('At least one payment method must be enabled.');
       }
 
       // --------------------------------------------------------
       // VALIDATE DEFAULT PAYMENT METHOD
       // --------------------------------------------------------
 
-      if (!_isPaymentMethodEnabled(
-        _defaultPaymentMethod,
-      )) {
-        throw Exception(
-          'The default payment method must be enabled.',
-        );
+      if (!_isPaymentMethodEnabled(_defaultPaymentMethod)) {
+        throw Exception('The default payment method must be enabled.');
       }
 
       // --------------------------------------------------------
@@ -267,44 +235,33 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
       // --------------------------------------------------------
 
       final settings = PosSettings(
-        defaultPaymentMethod:
-            _defaultPaymentMethod,
+        defaultPaymentMethod: _defaultPaymentMethod,
 
-        paymentCash:
-            _paymentCash,
+        paymentCash: _paymentCash,
 
-        paymentPos:
-            _paymentPos,
+        paymentPos: _paymentPos,
 
-        paymentTransfer:
-            _paymentTransfer,
+        paymentTransfer: _paymentTransfer,
 
-        allowDiscount:
-            _allowDiscount,
+        allowDiscount: _allowDiscount,
 
-        maximumDiscount:
-            maximumDiscount,
+        maximumDiscount: maximumDiscount,
 
-        allowPriceEditing:
-            _allowPriceEditing,
+        allowPriceEditing: _allowPriceEditing,
 
-        requireDiscountApproval:
-            _requireDiscountApproval,
+        requireDiscountApproval: _requireDiscountApproval,
 
-        requireCustomerName:
-            _requireCustomerName,
+        requireCustomerName: _requireCustomerName,
 
-        requireCustomerPhone:
-            _requireCustomerPhone,
+        requireCustomerPhone: _requireCustomerPhone,
 
-        automaticallyPrintReceipt:
-            _automaticallyPrintReceipt,
+        customerReceiptEmailEnabled: _customerReceiptEmailEnabled,
 
-        showCustomerDisplay:
-            _showCustomerDisplay,
+        automaticallyPrintReceipt: _automaticallyPrintReceipt,
 
-        customerDisplayDevice:
-            _customerDisplayDevice,
+        showCustomerDisplay: _showCustomerDisplay,
+
+        customerDisplayDevice: _customerDisplayDevice,
       );
 
       // --------------------------------------------------------
@@ -312,9 +269,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
       // --------------------------------------------------------
 
       if (!settings.isValid) {
-        throw Exception(
-          'Invalid POS settings.',
-        );
+        throw Exception('Invalid POS settings.');
       }
 
       // --------------------------------------------------------
@@ -325,19 +280,11 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
 
       if (!mounted) return;
 
-      _showMessage(
-        'POS settings saved successfully.',
-      );
+      _showMessage('POS settings saved successfully.');
     } catch (e) {
       if (!mounted) return;
 
-      _showMessage(
-        e.toString().replaceFirst(
-              'Exception: ',
-              '',
-            ),
-        isError: true,
-      );
+      _showMessage(e.toString().replaceFirst('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -351,9 +298,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // PAYMENT METHOD CHECK
   // ============================================================
 
-  bool _isPaymentMethodEnabled(
-    String method,
-  ) {
+  bool _isPaymentMethodEnabled(String method) {
     switch (method) {
       case 'cash':
         return _paymentCash;
@@ -374,9 +319,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // ============================================================
 
   bool _hasPaymentMethodEnabled() {
-    return _paymentCash ||
-        _paymentPos ||
-        _paymentTransfer;
+    return _paymentCash || _paymentPos || _paymentTransfer;
   }
 
   // ============================================================
@@ -403,10 +346,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // HANDLE PAYMENT METHOD CHANGE
   // ============================================================
 
-  void _setPaymentMethodEnabled(
-    String method,
-    bool enabled,
-  ) {
+  void _setPaymentMethodEnabled(String method, bool enabled) {
     // ----------------------------------------------------------
     // Prevent disabling the final enabled method.
     // ----------------------------------------------------------
@@ -442,11 +382,8 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
       // the default to another enabled payment method.
       // --------------------------------------------------------
 
-      if (!_isPaymentMethodEnabled(
-        _defaultPaymentMethod,
-      )) {
-        _defaultPaymentMethod =
-            _firstEnabledPaymentMethod();
+      if (!_isPaymentMethodEnabled(_defaultPaymentMethod)) {
+        _defaultPaymentMethod = _firstEnabledPaymentMethod();
       }
     });
   }
@@ -477,9 +414,7 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // DEFAULT PAYMENT CHANGE
   // ============================================================
 
-  void _setDefaultPaymentMethod(
-    String? value,
-  ) {
+  void _setDefaultPaymentMethod(String? value) {
     if (value == null) return;
 
     if (!_isPaymentMethodEnabled(value)) {
@@ -500,18 +435,11 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // MESSAGE
   // ============================================================
 
-  void _showMessage(
-    String message, {
-    bool isError = false,
-  }) {
+  void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: AppTextStyles.body,
-        ),
-        backgroundColor:
-            isError ? AppColors.danger : null,
+        content: Text(message, style: AppTextStyles.body),
+        backgroundColor: isError ? AppColors.danger : null,
       ),
     );
   }
@@ -529,15 +457,9 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
 
-      title: Text(
-        title,
-        style: AppTextStyles.body,
-      ),
+      title: Text(title, style: AppTextStyles.body),
 
-      subtitle: Text(
-        subtitle,
-        style: AppTextStyles.bodySecondary,
-      ),
+      subtitle: Text(subtitle, style: AppTextStyles.bodySecondary),
 
       value: value,
 
@@ -556,23 +478,17 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
     required Widget child,
   }) {
     return Card(
-      margin: const EdgeInsets.only(
-        bottom: AppSpacing.lg,
-      ),
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
 
       child: Padding(
-        padding: const EdgeInsets.all(
-          AppSpacing.xl,
-        ),
+        padding: const EdgeInsets.all(AppSpacing.xl),
 
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
             Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
                 Container(
@@ -580,57 +496,33 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                   height: AppSizes.iconButton,
 
                   decoration: BoxDecoration(
-                    color:
-                        AppColors.primaryLight,
+                    color: AppColors.primaryLight,
 
-                    borderRadius:
-                        BorderRadius.circular(
-                      AppRadius.md,
-                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
 
-                  child: Icon(
-                    icon,
-                    color:
-                        AppColors.primary,
-                  ),
+                  child: Icon(icon, color: AppColors.primary),
                 ),
 
-                const SizedBox(
-                  width: AppSpacing.md,
-                ),
+                const SizedBox(width: AppSpacing.md),
 
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
 
                     children: [
-                      Text(
-                        title,
-                        style:
-                            AppTextStyles.title,
-                      ),
+                      Text(title, style: AppTextStyles.title),
 
-                      const SizedBox(
-                        height: AppSpacing.xs,
-                      ),
+                      const SizedBox(height: AppSpacing.xs),
 
-                      Text(
-                        subtitle,
-                        style:
-                            AppTextStyles
-                                .bodySecondary,
-                      ),
+                      Text(subtitle, style: AppTextStyles.bodySecondary),
                     ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(
-              height: AppSpacing.xl,
-            ),
+            const SizedBox(height: AppSpacing.xl),
 
             child,
           ],
@@ -651,38 +543,20 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     return Card(
-      margin: const EdgeInsets.only(
-        bottom: AppSpacing.sm,
-      ),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
 
       elevation: 0,
 
-      color:
-          AppColors.surfaceSoft,
+      color: AppColors.surfaceSoft,
 
       child: SwitchListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
 
-        secondary: Icon(
-          icon,
-          color:
-              AppColors.primary,
-        ),
+        secondary: Icon(icon, color: AppColors.primary),
 
-        title: Text(
-          title,
-          style:
-              AppTextStyles.body,
-        ),
+        title: Text(title, style: AppTextStyles.body),
 
-        subtitle: Text(
-          subtitle,
-          style:
-              AppTextStyles.bodySecondary,
-        ),
+        subtitle: Text(subtitle, style: AppTextStyles.bodySecondary),
 
         value: value,
 
@@ -695,50 +569,27 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // INFO BOX
   // ============================================================
 
-  Widget _infoBox({
-    required IconData icon,
-    required String message,
-  }) {
+  Widget _infoBox({required IconData icon, required String message}) {
     return Container(
       width: double.infinity,
 
-      padding: const EdgeInsets.all(
-        AppSpacing.md,
-      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
 
       decoration: BoxDecoration(
-        color:
-            AppColors.infoLight,
+        color: AppColors.infoLight,
 
-        borderRadius:
-            BorderRadius.circular(
-          AppRadius.md,
-        ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
 
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
-          Icon(
-            icon,
-            size: AppSizes.iconButton / 2,
-            color:
-                AppColors.info,
-          ),
+          Icon(icon, size: AppSizes.iconButton / 2, color: AppColors.info),
 
-          const SizedBox(
-            width: AppSpacing.sm,
-          ),
+          const SizedBox(width: AppSpacing.sm),
 
-          Expanded(
-            child: Text(
-              message,
-              style:
-                  AppTextStyles.bodySecondary,
-            ),
-          ),
+          Expanded(child: Text(message, style: AppTextStyles.bodySecondary)),
         ],
       ),
     );
@@ -748,45 +599,31 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
   // SAVE BUTTON
   // ============================================================
 
-  Widget _saveButton({
-    required Responsive responsive,
-  }) {
+  Widget _saveButton({required Responsive responsive}) {
     return SizedBox(
       width: double.infinity,
 
-      height:
-          responsive.buttonHeight,
+      height: responsive.buttonHeight,
 
       child: ElevatedButton.icon(
-        onPressed:
-            _isSaving
-                ? null
-                : _saveSettings,
+        onPressed: _isSaving ? null : _saveSettings,
 
         icon: _isSaving
             ? const SizedBox(
-                width:
-                    AppSpacing.lg,
+                width: AppSpacing.lg,
 
-                height:
-                    AppSpacing.lg,
+                height: AppSpacing.lg,
 
-                child:
-                     CircularProgressIndicator(
+                child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: Colors.white,
                 ),
               )
-            : const Icon(
-                Icons.save,
-              ),
+            : const Icon(Icons.save),
 
         label: Text(
-          _isSaving
-              ? 'Saving...'
-              : 'Save POS Settings',
-          style:
-              AppTextStyles.body,
+          _isSaving ? 'Saving...' : 'Save POS Settings',
+          style: AppTextStyles.body,
         ),
       ),
     );
@@ -798,117 +635,80 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final responsive =
-        context.responsive;
+    final responsive = context.responsive;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'POS / Sales Settings',
-        ),
+        title: const Text('POS / Sales Settings'),
 
         actions: [
           Padding(
-            padding: EdgeInsets.only(
-              right:
-                  responsive.horizontalPadding,
-            ),
+            padding: EdgeInsets.only(right: responsive.horizontalPadding),
 
             child: ElevatedButton.icon(
-              onPressed:
-                  _isSaving
-                      ? null
-                      : _saveSettings,
+              onPressed: _isSaving ? null : _saveSettings,
 
               icon: _isSaving
                   ? const SizedBox(
-                      width:
-                          AppSpacing.lg,
+                      width: AppSpacing.lg,
 
-                      height:
-                          AppSpacing.lg,
+                      height: AppSpacing.lg,
 
-                      child:
-                           CircularProgressIndicator(
+                      child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(
-                      Icons.save,
-                    ),
+                  : const Icon(Icons.save),
 
-              label: const Text(
-                'Save',
-                style:
-                    AppTextStyles.body,
-              ),
+              label: const Text('Save', style: AppTextStyles.body),
             ),
           ),
         ],
       ),
 
       body: _isLoading
-          ? const Center(
-              child:
-                  CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth:
-                      responsive.contentMaxWidth,
+                  maxWidth: responsive.contentMaxWidth,
                 ),
 
                 child: ListView(
                   padding: EdgeInsets.symmetric(
-                    horizontal:
-                        responsive.horizontalPadding,
+                    horizontal: responsive.horizontalPadding,
 
-                    vertical:
-                        responsive.verticalPadding,
+                    vertical: responsive.verticalPadding,
                   ),
 
                   children: [
                     // ==================================================
                     // INTRO
                     // ==================================================
-
                     const Card(
-                      color:
-                          AppColors.infoLight,
+                      color: AppColors.infoLight,
 
                       child: Padding(
-                        padding:
-                            EdgeInsets.all(
-                          AppSpacing.lg,
-                        ),
+                        padding: EdgeInsets.all(AppSpacing.lg),
 
                         child: Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
                             const Icon(
                               Icons.info_outline,
-                              color:
-                                  AppColors.info,
+                              color: AppColors.info,
                             ),
 
-                            SizedBox(
-                              width:
-                                  AppSpacing.md,
-                            ),
+                            SizedBox(width: AppSpacing.md),
 
                             Expanded(
                               child: Text(
                                 'Configure how the point-of-sale '
                                 'screen handles payments, discounts, '
                                 'customers, receipts and customer-facing displays.',
-                                style:
-                                    AppTextStyles
-                                        .bodySecondary,
+                                style: AppTextStyles.bodySecondary,
                               ),
                             ),
                           ],
@@ -916,154 +716,102 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(
-                      height:
-                          AppSpacing.lg,
-                    ),
+                    const SizedBox(height: AppSpacing.lg),
 
                     // ==================================================
                     // DEFAULT PAYMENT
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Default Payment',
+                      title: 'Default Payment',
 
                       subtitle:
                           'Choose the payment method selected by default at checkout.',
 
-                      icon:
-                          Icons.payments,
+                      icon: Icons.payments,
 
-                      child:
-                          DropdownButtonFormField<
-                              String>(
-                        initialValue:
-                            _defaultPaymentMethod,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _defaultPaymentMethod,
 
-                        decoration:
-                            const InputDecoration(
-                          labelText:
-                              'Default Payment Method',
+                        decoration: const InputDecoration(
+                          labelText: 'Default Payment Method',
                         ),
 
                         items: const [
-                          DropdownMenuItem(
-                            value: 'cash',
-                            child:
-                                Text('Cash'),
-                          ),
+                          DropdownMenuItem(value: 'cash', child: Text('Cash')),
 
-                          DropdownMenuItem(
-                            value: 'pos',
-                            child:
-                                Text('POS'),
-                          ),
+                          DropdownMenuItem(value: 'pos', child: Text('POS')),
 
                           DropdownMenuItem(
                             value: 'transfer',
-                            child:
-                                Text(
-                              'Bank Transfer',
-                            ),
+                            child: Text('Bank Transfer'),
                           ),
                         ],
 
-                        onChanged:
-                            _setDefaultPaymentMethod,
+                        onChanged: _setDefaultPaymentMethod,
                       ),
                     ),
 
                     // ==================================================
                     // PAYMENT METHODS
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Payment Methods',
+                      title: 'Payment Methods',
 
                       subtitle:
                           'Choose which payment methods are available at checkout.',
 
-                      icon:
-                          Icons.account_balance_wallet,
+                      icon: Icons.account_balance_wallet,
 
                       child: Column(
                         children: [
                           _paymentMethodTile(
-                            title:
-                                'Cash',
+                            title: 'Cash',
 
-                            subtitle:
-                                'Allow customers to pay with cash.',
+                            subtitle: 'Allow customers to pay with cash.',
 
-                            icon:
-                                Icons.money,
+                            icon: Icons.money,
 
-                            value:
-                                _paymentCash,
+                            value: _paymentCash,
 
-                            onChanged:
-                                (value) {
-                              _setPaymentMethodEnabled(
-                                'cash',
-                                value,
-                              );
+                            onChanged: (value) {
+                              _setPaymentMethodEnabled('cash', value);
                             },
                           ),
 
                           _paymentMethodTile(
-                            title:
-                                'POS',
+                            title: 'POS',
 
                             subtitle:
                                 'Allow card payments through a POS terminal.',
 
-                            icon:
-                                Icons.credit_card,
+                            icon: Icons.credit_card,
 
-                            value:
-                                _paymentPos,
+                            value: _paymentPos,
 
-                            onChanged:
-                                (value) {
-                              _setPaymentMethodEnabled(
-                                'pos',
-                                value,
-                              );
+                            onChanged: (value) {
+                              _setPaymentMethodEnabled('pos', value);
                             },
                           ),
 
                           _paymentMethodTile(
-                            title:
-                                'Bank Transfer',
+                            title: 'Bank Transfer',
 
                             subtitle:
                                 'Allow customers to pay by bank transfer.',
 
-                            icon:
-                                Icons.account_balance,
+                            icon: Icons.account_balance,
 
-                            value:
-                                _paymentTransfer,
+                            value: _paymentTransfer,
 
-                            onChanged:
-                                (value) {
-                              _setPaymentMethodEnabled(
-                                'transfer',
-                                value,
-                              );
+                            onChanged: (value) {
+                              _setPaymentMethodEnabled('transfer', value);
                             },
                           ),
 
-                          const SizedBox(
-                            height:
-                                AppSpacing.sm,
-                          ),
+                          const SizedBox(height: AppSpacing.sm),
 
                           _infoBox(
-                            icon:
-                                Icons.call_split,
+                            icon: Icons.call_split,
 
                             message:
                                 'Split payments are handled directly on the sales screen using the enabled payment methods.',
@@ -1075,112 +823,81 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                     // ==================================================
                     // DISCOUNTS & PRICING
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Discounts & Pricing',
+                      title: 'Discounts & Pricing',
 
                       subtitle:
                           'Control discounts and manual price changes at checkout.',
 
-                      icon:
-                          Icons.discount,
+                      icon: Icons.discount,
 
                       child: Column(
                         children: [
                           _switchTile(
-                            title:
-                                'Allow Discounts',
+                            title: 'Allow Discounts',
 
                             subtitle:
                                 'Allow staff to apply discounts during sales.',
 
-                            value:
-                                _allowDiscount,
+                            value: _allowDiscount,
 
-                            onChanged:
-                                (value) {
+                            onChanged: (value) {
                               setState(() {
-                                _allowDiscount =
-                                    value;
+                                _allowDiscount = value;
                               });
                             },
                           ),
 
-                          const SizedBox(
-                            height:
-                                AppSpacing.sm,
-                          ),
+                          const SizedBox(height: AppSpacing.sm),
 
                           TextField(
-                            controller:
-                                _maximumDiscountController,
+                            controller: _maximumDiscountController,
 
-                            enabled:
-                                _allowDiscount,
+                            enabled: _allowDiscount,
 
-                            keyboardType:
-                                const TextInputType
-                                    .numberWithOptions(
+                            keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
 
-                            decoration:
-                                const InputDecoration(
-                              labelText:
-                                  'Maximum Discount',
+                            decoration: const InputDecoration(
+                              labelText: 'Maximum Discount',
 
-                              suffixText:
-                                  '%',
+                              suffixText: '%',
 
-                              hintText:
-                                  '20',
+                              hintText: '20',
                             ),
                           ),
 
-                          const SizedBox(
-                            height:
-                                AppSpacing.sm,
-                          ),
+                          const SizedBox(height: AppSpacing.sm),
 
                           _switchTile(
-                            title:
-                                'Require Discount Approval',
+                            title: 'Require Discount Approval',
 
                             subtitle:
                                 'Require approval before applying a discount.',
 
-                            value:
-                                _requireDiscountApproval,
+                            value: _requireDiscountApproval,
 
-                            onChanged:
-                                _allowDiscount
-                                    ? (value) {
-                                        setState(
-                                          () {
-                                            _requireDiscountApproval =
-                                                value;
-                                          },
-                                        );
-                                      }
-                                    : null,
+                            onChanged: _allowDiscount
+                                ? (value) {
+                                    setState(() {
+                                      _requireDiscountApproval = value;
+                                    });
+                                  }
+                                : null,
                           ),
 
                           _switchTile(
-                            title:
-                                'Allow Price Editing',
+                            title: 'Allow Price Editing',
 
                             subtitle:
                                 'Allow the cashier to manually change a product price during checkout.',
 
-                            value:
-                                _allowPriceEditing,
+                            value: _allowPriceEditing,
 
-                            onChanged:
-                                (value) {
+                            onChanged: (value) {
                               setState(() {
-                                _allowPriceEditing =
-                                    value;
+                                _allowPriceEditing = value;
                               });
                             },
                           ),
@@ -1191,53 +908,50 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                     // ==================================================
                     // CUSTOMER INFORMATION
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Customer Information',
+                      title: 'Customer Information',
 
                       subtitle:
                           'Control customer information collected during sales.',
 
-                      icon:
-                          Icons.person,
+                      icon: Icons.person,
 
                       child: Column(
                         children: [
                           _switchTile(
-                            title:
-                                'Require Customer Name',
+                            title: 'Require Customer Name',
 
                             subtitle:
                                 'Require a customer name before completing a sale.',
 
-                            value:
-                                _requireCustomerName,
+                            value: _requireCustomerName,
 
-                            onChanged:
-                                (value) {
+                            onChanged: (value) {
                               setState(() {
-                                _requireCustomerName =
-                                    value;
+                                _requireCustomerName = value;
                               });
                             },
                           ),
 
                           _switchTile(
-                            title:
-                                'Require Customer Phone',
-
+                            title: 'Require Customer Phone',
                             subtitle:
                                 'Require a customer phone number before completing a sale.',
-
-                            value:
-                                _requireCustomerPhone,
-
-                            onChanged:
-                                (value) {
+                            value: _requireCustomerPhone,
+                            onChanged: (value) {
                               setState(() {
-                                _requireCustomerPhone =
-                                    value;
+                                _requireCustomerPhone = value;
+                              });
+                            },
+                          ),
+                          _switchTile(
+                            title: 'Customer Email Receipts',
+                            subtitle:
+                                'Allow sending completed sale receipts to a customer email address.',
+                            value: _customerReceiptEmailEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _customerReceiptEmailEnabled = value;
                               });
                             },
                           ),
@@ -1248,33 +962,25 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                     // ==================================================
                     // RECEIPTS
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Receipt Printing',
+                      title: 'Receipt Printing',
 
                       subtitle:
                           'Control how receipts are produced after sales.',
 
-                      icon:
-                          Icons.print,
+                      icon: Icons.print,
 
-                      child:
-                          _switchTile(
-                        title:
-                            'Automatically Print Receipt',
+                      child: _switchTile(
+                        title: 'Automatically Print Receipt',
 
                         subtitle:
                             'Automatically send the receipt to the configured printer after a successful sale.',
 
-                        value:
-                            _automaticallyPrintReceipt,
+                        value: _automaticallyPrintReceipt,
 
-                        onChanged:
-                            (value) {
+                        onChanged: (value) {
                           setState(() {
-                            _automaticallyPrintReceipt =
-                                value;
+                            _automaticallyPrintReceipt = value;
                           });
                         },
                       ),
@@ -1283,89 +989,61 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                     // ==================================================
                     // CUSTOMER DISPLAY
                     // ==================================================
-
                     _sectionCard(
-                      title:
-                          'Customer Display',
+                      title: 'Customer Display',
 
                       subtitle:
                           'Configure a screen that shows checkout information to the customer.',
 
-                      icon:
-                          Icons.desktop_mac,
+                      icon: Icons.desktop_mac,
 
                       child: Column(
                         children: [
                           _switchTile(
-                            title:
-                                'Show Customer Display',
+                            title: 'Show Customer Display',
 
                             subtitle:
                                 'Enable a customer-facing display during checkout.',
 
-                            value:
-                                _showCustomerDisplay,
+                            value: _showCustomerDisplay,
 
-                            onChanged:
-                                (value) {
+                            onChanged: (value) {
                               setState(() {
-                                _showCustomerDisplay =
-                                    value;
+                                _showCustomerDisplay = value;
                               });
                             },
                           ),
 
-                          const SizedBox(
-                            height:
-                                AppSpacing.sm,
-                          ),
+                          const SizedBox(height: AppSpacing.sm),
 
-                          DropdownButtonFormField<
-                              String>(
-                            initialValue:
-                                _customerDisplayDevice,
+                          DropdownButtonFormField<String>(
+                            initialValue: _customerDisplayDevice,
 
-                            decoration:
-                                const InputDecoration(
-                              labelText:
-                                  'Display Device',
+                            decoration: const InputDecoration(
+                              labelText: 'Display Device',
                             ),
 
-                            items:
-                                _displayDeviceOptions
-                                    .map(
-                                      (
-                                        device,
-                                      ) =>
-                                          DropdownMenuItem<
-                                              String>(
-                                        value:
-                                            device,
+                            items: _displayDeviceOptions
+                                .map(
+                                  (device) => DropdownMenuItem<String>(
+                                    value: device,
 
-                                        child:
-                                            Text(
-                                          device,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                    child: Text(device),
+                                  ),
+                                )
+                                .toList(),
 
-                            onChanged:
-                                _showCustomerDisplay
-                                    ? (value) {
-                                        if (value ==
-                                            null) {
-                                          return;
-                                        }
+                            onChanged: _showCustomerDisplay
+                                ? (value) {
+                                    if (value == null) {
+                                      return;
+                                    }
 
-                                        setState(
-                                          () {
-                                            _customerDisplayDevice =
-                                                value;
-                                          },
-                                        );
-                                      }
-                                    : null,
+                                    setState(() {
+                                      _customerDisplayDevice = value;
+                                    });
+                                  }
+                                : null,
                           ),
                         ],
                       ),
@@ -1374,21 +1052,11 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
                     // ==================================================
                     // SAVE
                     // ==================================================
+                    const SizedBox(height: AppSpacing.sm),
 
-                    const SizedBox(
-                      height:
-                          AppSpacing.sm,
-                    ),
+                    _saveButton(responsive: responsive),
 
-                    _saveButton(
-                      responsive:
-                          responsive,
-                    ),
-
-                    const SizedBox(
-                      height:
-                          AppSpacing.section,
-                    ),
+                    const SizedBox(height: AppSpacing.section),
                   ],
                 ),
               ),
@@ -1407,4 +1075,3 @@ class _PosSettingsScreenState extends State<PosSettingsScreen> {
     super.dispose();
   }
 }
-

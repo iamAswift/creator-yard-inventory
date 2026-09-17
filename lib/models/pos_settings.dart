@@ -26,6 +26,7 @@ class PosSettings {
 
   final bool requireCustomerName;
   final bool requireCustomerPhone;
+  final bool customerReceiptEmailEnabled;
 
   // ============================================================
   // RECEIPT
@@ -58,6 +59,7 @@ class PosSettings {
 
     this.requireCustomerName = false,
     this.requireCustomerPhone = false,
+    this.customerReceiptEmailEnabled = false,
 
     this.automaticallyPrintReceipt = false,
 
@@ -83,6 +85,7 @@ class PosSettings {
 
     bool? requireCustomerName,
     bool? requireCustomerPhone,
+    bool? customerReceiptEmailEnabled,
 
     bool? automaticallyPrintReceipt,
 
@@ -122,6 +125,10 @@ class PosSettings {
       requireCustomerPhone:
           requireCustomerPhone ??
           this.requireCustomerPhone,
+
+      customerReceiptEmailEnabled:
+          customerReceiptEmailEnabled ??
+          this.customerReceiptEmailEnabled,
 
       automaticallyPrintReceipt:
           automaticallyPrintReceipt ??
@@ -325,6 +332,7 @@ class PosSettings {
         'requireDiscountApproval: $requireDiscountApproval, '
         'requireCustomerName: $requireCustomerName, '
         'requireCustomerPhone: $requireCustomerPhone, '
+        'customerReceiptEmailEnabled: $customerReceiptEmailEnabled, '
         'automaticallyPrintReceipt: $automaticallyPrintReceipt, '
         'showCustomerDisplay: $showCustomerDisplay, '
         'customerDisplayDevice: $customerDisplayDevice'

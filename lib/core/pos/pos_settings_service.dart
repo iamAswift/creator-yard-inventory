@@ -35,6 +35,8 @@ class PosSettingsService {
 
   static const bool defaultRequireCustomerPhone = false;
 
+  static const bool defaultCustomerReceiptEmailEnabled = false;
+
   static const bool defaultAutomaticallyPrintReceipt = false;
 
   static const bool defaultShowCustomerDisplay = false;
@@ -118,6 +120,12 @@ class PosSettingsService {
         ) ??
         defaultRequireCustomerPhone.toString();
 
+    final customerReceiptEmailEnabled =
+        await settingsDao.getSetting(
+          BusinessSettings.customerReceiptEmailEnabled,
+        ) ??
+        defaultCustomerReceiptEmailEnabled.toString();
+
     // ------------------------------------------------------------
     // RECEIPT
     // ------------------------------------------------------------
@@ -182,6 +190,9 @@ class PosSettingsService {
 
       requireCustomerPhone:
           _parseBool(requireCustomerPhone),
+
+      customerReceiptEmailEnabled:
+          _parseBool(customerReceiptEmailEnabled),
 
       automaticallyPrintReceipt:
           _parseBool(
@@ -306,6 +317,11 @@ class PosSettingsService {
     await settingsDao.setSetting(
       BusinessSettings.requireCustomerPhone,
       settings.requireCustomerPhone.toString(),
+    );
+
+    await settingsDao.setSetting(
+      BusinessSettings.customerReceiptEmailEnabled,
+      settings.customerReceiptEmailEnabled.toString(),
     );
 
     // ------------------------------------------------------------

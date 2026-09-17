@@ -109,6 +109,9 @@ class BusinessSettings {
 
   static const String requireCustomerPhone = 'require_customer_phone';
 
+  static const String customerReceiptEmailEnabled =
+      'customer_receipt_email_enabled';
+
   static const String allowPriceEditing = 'allow_price_editing';
 
   static const String requireDiscountApproval = 'require_discount_approval';
