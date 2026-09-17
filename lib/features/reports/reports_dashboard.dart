@@ -7,6 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/styles.dart';
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 import '../../database/app_database.dart';
 import '../../database/business_settings.dart';
 import '../../database/daos/attendance_dao.dart';
@@ -1312,6 +1315,173 @@ class _ReportsDashboardState extends State<ReportsDashboard> {
     );
   }
 
+  Future<void> _emailDashboardReport({
+    required double totalSales,
+    required int itemsSold,
+    required double profit,
+    required Map<String, double> paymentBreakdown,
+    required List<Map<String, dynamic>> categorySummary,
+    required List<Map<String, dynamic>> salesTrend,
+  }) async {
+    final businessEmail = await BusinessIdentity.getBusinessEmail(
+      widget.settingsDao,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final recipientController = TextEditingController(text: businessEmail);
+
+    final recipient = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Email Dashboard PDF',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: SizedBox(
+            width: 420,
+            child: TextField(
+              controller: recipientController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                final value = recipientController.text.trim();
+
+                if (value.isEmpty) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      content: Text('Recipient email address is required.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(value);
+              },
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+
+    recipientController.dispose();
+
+    if (recipient == null || recipient.trim().isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      final file = await PdfReport.generateDashboardReport(
+        totalSales: totalSales,
+        itemsSold: itemsSold,
+        profit: profit,
+        paymentBreakdown: paymentBreakdown,
+        categorySummary: categorySummary,
+        salesTrend: salesTrend,
+      );
+
+      final pdfBytes = await file.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId = await InstallationIdentity.getInstallationId(
+        widget.settingsDao,
+      );
+
+      final reportId = DateTime.now().millisecondsSinceEpoch;
+
+      final businessName = await BusinessIdentity.getBusinessName(
+        widget.settingsDao,
+      );
+
+      final normalizedBusinessName = businessName.trim().isEmpty
+          ? 'Business'
+          : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: widget.settingsDao,
+        installationId: installationId,
+        reportId: reportId,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Reports Dashboard',
+        body:
+            'Attached is the Reports Dashboard PDF for $normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'reports-dashboard.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Dashboard PDF emailed to ${recipient.trim()}.',
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            e.message,
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            'Unable to email dashboard PDF: $e',
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _exportButtons({
     required double totalSales,
     required int itemsSold,
@@ -1385,6 +1555,30 @@ class _ReportsDashboardState extends State<ReportsDashboard> {
       },
     );
 
+    final emailButton = ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.primary,
+        elevation: 0,
+        minimumSize: const Size(0, 46),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      icon: const Icon(Icons.email_outlined, size: 19),
+      label: const Text(
+        'Email Dashboard PDF',
+        style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+      ),
+      onPressed: () => _emailDashboardReport(
+        totalSales: totalSales,
+        itemsSold: itemsSold,
+        profit: profit,
+        paymentBreakdown: paymentBreakdown,
+        categorySummary: categorySummary,
+        salesTrend: salesTrend,
+      ),
+    );
+
     final jsonButton = ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
@@ -1452,7 +1646,13 @@ class _ReportsDashboardState extends State<ReportsDashboard> {
     if (compact) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [pdfButton, const SizedBox(height: 9), jsonButton],
+        children: [
+          pdfButton,
+          const SizedBox(height: 9),
+          emailButton,
+          const SizedBox(height: 9),
+          jsonButton,
+        ],
       );
     }
 
@@ -1460,7 +1660,7 @@ class _ReportsDashboardState extends State<ReportsDashboard> {
       spacing: 9,
       runSpacing: 9,
       alignment: WrapAlignment.end,
-      children: [pdfButton, jsonButton],
+      children: [pdfButton, emailButton, jsonButton],
     );
   }
 

@@ -277,4 +277,134 @@ class EmailService {
       );
     }
   }
+
+  static Future<void> sendReportEmail({
+    required SettingsDao settingsDao,
+    required String installationId,
+    required int reportId,
+    required String recipient,
+    required String subject,
+    required String body,
+    required String pdfBase64,
+    required String filename,
+  }) async {
+    final credential = await settingsDao.getSetting(
+      BusinessSettings.emailApiCredential,
+    );
+    final normalizedCredential = credential?.trim() ?? '';
+
+    if (normalizedCredential.isEmpty) {
+      throw const EmailServiceException(
+        message: 'Installation credential is not configured.',
+        retryable: false,
+      );
+    }
+
+    if (installationId.trim().isEmpty) {
+      throw const EmailServiceException(
+        message: 'Installation ID is required.',
+        retryable: false,
+      );
+    }
+
+    if (reportId <= 0) {
+      throw const EmailServiceException(
+        message: 'Report ID must be a positive integer.',
+        retryable: false,
+      );
+    }
+
+    if (recipient.trim().isEmpty) {
+      throw const EmailServiceException(
+        message: 'Report recipient email address is required.',
+        retryable: false,
+      );
+    }
+
+    if (pdfBase64.trim().isEmpty) {
+      throw const EmailServiceException(
+        message: 'Report PDF content is required.',
+        retryable: false,
+      );
+    }
+
+    if (filename.trim().isEmpty) {
+      throw const EmailServiceException(
+        message: 'Report filename is required.',
+        retryable: false,
+      );
+    }
+
+    final http.Response response;
+
+    try {
+      response = await http.post(
+        Uri.parse('$_baseUrl/v1/email/report'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $normalizedCredential',
+        },
+        body: jsonEncode({
+          'installationId': installationId.trim(),
+          'reportId': reportId.toString(),
+          'recipient': recipient.trim(),
+          'subject': subject,
+          'body': body,
+          'pdfBase64': pdfBase64.trim(),
+          'filename': filename.trim(),
+        }),
+      );
+    } catch (_) {
+      throw const EmailServiceException(
+        message:
+            'Could not reach the email service. '
+            'Please retry the report email.',
+        retryable: true,
+      );
+    }
+
+    Map<String, dynamic> responseData;
+
+    try {
+      responseData = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      final retryable =
+          response.statusCode >= 500 ||
+          response.statusCode == 408 ||
+          response.statusCode == 429;
+
+      throw EmailServiceException(
+        message: 'Email API returned an invalid response.',
+        retryable: retryable,
+        statusCode: response.statusCode,
+      );
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final error = responseData['error']?.toString() ?? 'Report email failed.';
+
+      final retryable =
+          responseData['retryable'] == true ||
+          response.statusCode == 408 ||
+          response.statusCode == 409 ||
+          response.statusCode == 429 ||
+          response.statusCode >= 500;
+
+      throw EmailServiceException(
+        message: error,
+        retryable: retryable,
+        statusCode: response.statusCode,
+      );
+    }
+
+    if (responseData['success'] != true) {
+      final error =
+          responseData['error']?.toString() ?? 'Report email failed to send.';
+
+      throw EmailServiceException(
+        message: error,
+        retryable: responseData['retryable'] == true,
+      );
+    }
+  }
 }
