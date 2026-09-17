@@ -10,6 +10,7 @@ import 'database/app_database.dart';
 import 'database/business_settings.dart';
 import 'database/daos/settings_dao.dart';
 import 'core/email/sale_email_worker.dart';
+import 'core/backup/backup_service.dart';
 import 'core/system/installation_registration_service.dart';
 import 'core/licensing/demo_license_service.dart';
 import 'core/licensing/commercial_license_provider.dart';
@@ -43,6 +44,28 @@ Future<void> main() async {
   // Force database to open.
   await db.customSelect('SELECT 1').get();
 
+  // ------------------------------------------------------------
+  // DAILY DATABASE BACKUP
+  // ------------------------------------------------------------
+  //
+  // Creates one local SQLite backup per calendar day.
+  // Backup failures must never prevent the application from starting.
+  //
+  unawaited(
+    BackupService.createDailyBackupIfNeeded()
+        .then((backup) {
+          if (backup != null) {
+            debugPrint('Database daily backup created: ${backup.path}');
+          } else {
+            debugPrint('Database daily backup already exists for today.');
+          }
+        })
+        .catchError((error, stackTrace) {
+          debugPrint('Database daily backup failed: $error');
+          debugPrint('$stackTrace');
+        }),
+  );
+
   final settingsDao = SettingsDao(db);
 
   try {
@@ -65,13 +88,12 @@ Future<void> main() async {
   // public Flutter application.
   //
 
-  const isCommercialBuild =
-    bool.fromEnvironment('CREATOR_YARD_COMMERCIAL');
+  const isCommercialBuild = bool.fromEnvironment('CREATOR_YARD_COMMERCIAL');
 
   final licenseRepository = LicenseRepository(
     provider: isCommercialBuild
-      ? CommercialLicenseProvider(settingsDao: settingsDao)
-      : DemoLicenseService(settingsDao: settingsDao),
+        ? CommercialLicenseProvider(settingsDao: settingsDao)
+        : DemoLicenseService(settingsDao: settingsDao),
   );
 
   LicenseState? licenseState;
@@ -103,8 +125,9 @@ Future<void> main() async {
     debugPrint('$stackTrace');
 
     if (isCommercialBuild) {
-      final installationId =
-          await InstallationIdentity.getInstallationId(settingsDao);
+      final installationId = await InstallationIdentity.getInstallationId(
+        settingsDao,
+      );
 
       licenseState = LicenseState(
         status: LicenseStatus.unlicensed,

@@ -14,6 +14,7 @@ import 'receipt_settings_screen.dart';
 import 'security_settings_screen.dart';
 import 'reports_settings_screen.dart';
 import 'email_credits_screen.dart';
+import 'backup_data_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final SettingsDao settingsDao;
@@ -594,11 +595,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: 'Backup & Data',
         subtitle: 'Backup, restore and manage application data',
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Backup & Data will be available in a later phase.',
-              ),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BackupDataScreen(settingsDao: widget.settingsDao),
             ),
           );
         },
