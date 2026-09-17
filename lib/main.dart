@@ -11,6 +11,7 @@ import 'database/business_settings.dart';
 import 'database/daos/settings_dao.dart';
 import 'core/email/sale_email_worker.dart';
 import 'core/backup/backup_service.dart';
+import 'core/app/app_refresh.dart';
 import 'core/system/installation_registration_service.dart';
 import 'core/licensing/demo_license_service.dart';
 import 'core/licensing/commercial_license_provider.dart';
@@ -235,12 +236,35 @@ class _SupermarketAppState extends State<SupermarketApp> {
   ThemeMode _themeMode = ThemeMode.light;
 
   bool _themeLoaded = false;
+  late SettingsDao _settingsDao;
 
   @override
   void initState() {
     super.initState();
 
+    _settingsDao = widget.settingsDao;
+
+    AppRefresh.version.addListener(_handleAppRefresh);
+
     _loadTheme();
+  }
+
+  void _handleAppRefresh() {
+    if (!mounted) return;
+
+    _settingsDao = getSettingsDao();
+
+    setState(() {
+      _themeLoaded = false;
+    });
+
+    _loadTheme();
+  }
+
+  @override
+  void dispose() {
+    AppRefresh.version.removeListener(_handleAppRefresh);
+    super.dispose();
   }
 
   // ============================================================
@@ -249,7 +273,7 @@ class _SupermarketAppState extends State<SupermarketApp> {
 
   Future<void> _loadTheme() async {
     try {
-      final savedTheme = await widget.settingsDao.getSetting(
+      final savedTheme = await _settingsDao.getSetting(
         BusinessSettings.themeMode,
       );
 

@@ -47,7 +47,9 @@ GoRouter appRouter({
     // ==========================================================
     // INITIAL LOCATION
     // ==========================================================
-    initialLocation: needsInitialSetup ? '/initial-setup' : '/',
+    initialLocation: needsInitialSetup
+        ? '/initial-setup'
+        : (Session.isLoggedIn ? '/dashboard' : '/'),
 
     routes: [
       // ==========================================================

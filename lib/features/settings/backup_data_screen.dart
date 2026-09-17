@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/backup/backup_service.dart';
+import '../../core/app/app_refresh.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/styles.dart';
 import '../../database/daos/settings_dao.dart';
@@ -23,6 +24,7 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
   List<File> _backups = [];
   bool _isLoading = true;
   bool _isCreatingBackup = false;
+  bool _isRestoring = false;
   String? _errorMessage;
 
   @override
@@ -55,6 +57,77 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
         _isLoading = false;
         _errorMessage = 'Failed to load backups: $e';
       });
+    }
+  }
+
+  Future<void> _restoreBackup(File backup) async {
+    if (_isRestoring || _isCreatingBackup) return;
+
+    final shouldRestore = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Restore Database?'),
+          content: Text(
+            'This will replace the current inventory database with:\n\n'
+            '${_fileName(backup)}\n\n'
+            'Your current data will be replaced. A safety backup will be '
+            'created before the restore.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldRestore != true || !mounted) return;
+
+    setState(() {
+      _isRestoring = true;
+    });
+
+    try {
+      await BackupService.validateBackup(backup);
+
+      final safetyBackup = await BackupService.backupNow();
+
+      debugPrint(
+        'Restore safety backup created: ${safetyBackup.path}',
+      );
+
+      await BackupService.replaceLiveDatabase(backup);
+
+      AppRefresh.refresh();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Database restored successfully.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Database restore failed: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+        });
+      }
     }
   }
 
@@ -174,6 +247,13 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
               );
             },
           ),
+        ),
+        trailing: TextButton.icon(
+          onPressed: (_isRestoring || _isCreatingBackup)
+              ? null
+              : () => _restoreBackup(backup),
+          icon: const Icon(Icons.restore),
+          label: const Text('Restore'),
         ),
       ),
     );
