@@ -15,6 +15,7 @@ import 'security_settings_screen.dart';
 import 'reports_settings_screen.dart';
 import 'email_credits_screen.dart';
 import 'backup_data_screen.dart';
+import 'about_system_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final SettingsDao settingsDao;
@@ -134,6 +135,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => EmailCreditsScreen(settingsDao: widget.settingsDao),
+      ),
+    );
+  }
+
+  void _openAboutSystem() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AboutSystemScreen(settingsDao: widget.settingsDao),
       ),
     );
   }
@@ -607,15 +616,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.info_outline,
         title: 'About / System Information',
         subtitle: 'Application version, database and system information',
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'About / System Information will be available in a later phase.',
-              ),
-            ),
-          );
-        },
+        onTap: _openAboutSystem,
       ),
 
       _navigationCard(
