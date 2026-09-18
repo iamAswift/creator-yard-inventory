@@ -1,11 +1,18 @@
 // lib/features/reports/sales_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/product_dao.dart';
 import '../../database/daos/sales_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../shared/pdf_report.dart';
 
 class SalesReportScreen extends StatefulWidget {
@@ -20,6 +27,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
   late final SalesDao salesDao;
   late final ProductDao productDao;
+  late final SettingsDao settingsDao;
 
   String _selectedFilter = 'Day';
   DateTimeRange? _selectedDateRange;
@@ -30,6 +38,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
     salesDao = SalesDao(db);
     productDao = ProductDao(db);
+    settingsDao = SettingsDao(db);
   }
 
   // ============================================================
@@ -45,22 +54,10 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       appBar: _buildAppBar(),
       body: FutureBuilder<List<dynamic>>(
         future: Future.wait([
-          salesDao.getTotalSales(
-            range.start,
-            range.end,
-          ),
-          salesDao.getItemsSold(
-            range.start,
-            range.end,
-          ),
-          salesDao.getProfit(
-            range.start,
-            range.end,
-          ),
-          salesDao.getPaymentBreakdown(
-            range.start,
-            range.end,
-          ),
+          salesDao.getTotalSales(range.start, range.end),
+          salesDao.getItemsSold(range.start, range.end),
+          salesDao.getProfit(range.start, range.end),
+          salesDao.getPaymentBreakdown(range.start, range.end),
           productDao.getLowStockProducts(),
           salesDao.getAllSales(),
         ]),
@@ -88,17 +85,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           final itemsSold = _toInt(data[1]);
           final profit = _toDouble(data[2]);
 
-          final paymentBreakdown = _normalisePaymentBreakdown(
-            data[3] as Map,
-          );
+          final paymentBreakdown = _normalisePaymentBreakdown(data[3] as Map);
 
-          final lowStock = List<Product>.from(
-            data[4] as List,
-          );
+          final lowStock = List<Product>.from(data[4] as List);
 
-          final allSales = List<Sale>.from(
-            data[5] as List,
-          );
+          final allSales = List<Sale>.from(data[5] as List);
 
           final filteredSales = allSales.where((sale) {
             return !sale.createdAt.isBefore(range.start) &&
@@ -110,9 +101,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             backgroundColor: AppColors.surface,
             onRefresh: () async {
               setState(() {});
-              await Future<void>.delayed(
-                const Duration(milliseconds: 250),
-              );
+              await Future<void>.delayed(const Duration(milliseconds: 250));
             },
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -126,20 +115,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   ),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 1400,
-                      ),
+                      constraints: const BoxConstraints(maxWidth: 1400),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPageHeader(
-                            range,
-                            width,
-                          ),
+                          _buildPageHeader(range, width),
 
-                          SizedBox(
-                            height: _sectionSpacing(width),
-                          ),
+                          SizedBox(height: _sectionSpacing(width)),
 
                           _buildOverviewSection(
                             totalSales: totalSales,
@@ -148,36 +130,19 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                             width: width,
                           ),
 
-                          SizedBox(
-                            height: _sectionSpacing(width),
-                          ),
+                          SizedBox(height: _sectionSpacing(width)),
 
-                          _buildPaymentSection(
-                            paymentBreakdown,
-                            width,
-                          ),
+                          _buildPaymentSection(paymentBreakdown, width),
 
-                          SizedBox(
-                            height: _sectionSpacing(width),
-                          ),
+                          SizedBox(height: _sectionSpacing(width)),
 
-                          _buildTransactionsSection(
-                            filteredSales,
-                            width,
-                          ),
+                          _buildTransactionsSection(filteredSales, width),
 
-                          SizedBox(
-                            height: _sectionSpacing(width),
-                          ),
+                          SizedBox(height: _sectionSpacing(width)),
 
-                          _buildLowStockSection(
-                            lowStock,
-                            width,
-                          ),
+                          _buildLowStockSection(lowStock, width),
 
-                          SizedBox(
-                            height: _sectionSpacing(width),
-                          ),
+                          SizedBox(height: _sectionSpacing(width)),
 
                           _buildExportSection(
                             range: range,
@@ -251,10 +216,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(
-          height: 1,
-          color: AppColors.divider,
-        ),
+        child: Container(height: 1, color: AppColors.divider),
       ),
     );
   }
@@ -263,10 +225,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   // PAGE HEADER
   // ============================================================
 
-  Widget _buildPageHeader(
-    DateTimeRange range,
-    double width,
-  ) {
+  Widget _buildPageHeader(DateTimeRange range, double width) {
     final compact = width < 600;
 
     return Column(
@@ -275,9 +234,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         Text(
           'Sales performance',
           style: compact
-              ? AppTextStyles.title.copyWith(
-                  fontSize: 20,
-                )
+              ? AppTextStyles.title.copyWith(fontSize: 20)
               : AppTextStyles.heading,
         ),
         const SizedBox(height: 6),
@@ -287,16 +244,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         ),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 7,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -361,10 +313,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Overview',
-          style: AppTextStyles.title,
-        ),
+        const Text('Overview', style: AppTextStyles.title),
         const SizedBox(height: 14),
         if (mobile)
           Column(
@@ -390,9 +339,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               Row(
                 children: [
                   Expanded(child: cards[2]),
-                  const Expanded(
-                    child: SizedBox(),
-                  ),
+                  const Expanded(child: SizedBox()),
                 ],
               ),
             ],
@@ -419,16 +366,12 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     required Color backgroundColor,
   }) {
     return Container(
-      constraints: const BoxConstraints(
-        minHeight: 98,
-      ),
+      constraints: const BoxConstraints(minHeight: 98),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -446,11 +389,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               color: backgroundColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -458,10 +397,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.bodySecondary,
-                ),
+                Text(title, style: AppTextStyles.bodySecondary),
                 const SizedBox(height: 4),
                 Text(
                   value,
@@ -518,10 +454,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         Row(
           children: [
             const Expanded(
-              child: Text(
-                'Payment breakdown',
-                style: AppTextStyles.title,
-              ),
+              child: Text('Payment breakdown', style: AppTextStyles.title),
             ),
             _sectionBadge(
               icon: Icons.account_balance_wallet_outlined,
@@ -531,15 +464,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         ),
         const SizedBox(height: 14),
         Container(
-          padding: EdgeInsets.all(
-            width < 600 ? 16 : 18,
-          ),
+          padding: EdgeInsets.all(width < 600 ? 16 : 18),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x06000000),
@@ -553,20 +482,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               if (constraints.maxWidth < 650) {
                 return Column(
                   children: [
-                    _paymentRow(
-                      data: items[0],
-                      total: total,
-                    ),
+                    _paymentRow(data: items[0], total: total),
                     const SizedBox(height: 18),
-                    _paymentRow(
-                      data: items[1],
-                      total: total,
-                    ),
+                    _paymentRow(data: items[1], total: total),
                     const SizedBox(height: 18),
-                    _paymentRow(
-                      data: items[2],
-                      total: total,
-                    ),
+                    _paymentRow(data: items[2], total: total),
                   ],
                 );
               }
@@ -574,24 +494,15 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               return Row(
                 children: [
                   Expanded(
-                    child: _paymentRow(
-                      data: items[0],
-                      total: total,
-                    ),
+                    child: _paymentRow(data: items[0], total: total),
                   ),
                   const SizedBox(width: 22),
                   Expanded(
-                    child: _paymentRow(
-                      data: items[1],
-                      total: total,
-                    ),
+                    child: _paymentRow(data: items[1], total: total),
                   ),
                   const SizedBox(width: 22),
                   Expanded(
-                    child: _paymentRow(
-                      data: items[2],
-                      total: total,
-                    ),
+                    child: _paymentRow(data: items[2], total: total),
                   ),
                 ],
               );
@@ -602,10 +513,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     );
   }
 
-  Widget _paymentRow({
-    required _PaymentData data,
-    required double total,
-  }) {
+  Widget _paymentRow({required _PaymentData data, required double total}) {
     final percentage = total > 0 ? data.value / total : 0.0;
 
     return Column(
@@ -620,24 +528,15 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                 color: data.color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                data.icon,
-                color: data.color,
-                size: 19,
-              ),
+              child: Icon(data.icon, color: data.color, size: 19),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                data.title,
-                style: AppTextStyles.bodySecondary,
-              ),
+              child: Text(data.title, style: AppTextStyles.bodySecondary),
             ),
             Text(
               _formatCurrency(data.value),
-              style: AppTextStyles.title.copyWith(
-                fontSize: 14,
-              ),
+              style: AppTextStyles.title.copyWith(fontSize: 14),
             ),
           ],
         ),
@@ -660,35 +559,20 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     );
   }
 
-  Widget _sectionBadge({
-    required IconData icon,
-    required String text,
-  }) {
+  Widget _sectionBadge({required IconData icon, required String text}) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surfaceSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.border,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: AppColors.textSecondary,
-          ),
+          Icon(icon, size: 15, color: AppColors.textSecondary),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: AppTextStyles.small,
-          ),
+          Text(text, style: AppTextStyles.small),
         ],
       ),
     );
@@ -698,26 +582,17 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   // TRANSACTIONS
   // ============================================================
 
-  Widget _buildTransactionsSection(
-    List<Sale> sales,
-    double width,
-  ) {
+  Widget _buildTransactionsSection(List<Sale> sales, double width) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             const Expanded(
-              child: Text(
-                'Sales transactions',
-                style: AppTextStyles.title,
-              ),
+              child: Text('Sales transactions', style: AppTextStyles.title),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(8),
@@ -738,9 +613,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x06000000),
@@ -757,8 +630,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
                     return Column(
                       children: [
-                        if (desktop)
-                          _buildDesktopTransactionHeader(),
+                        if (desktop) _buildDesktopTransactionHeader(),
                         for (int i = 0; i < sales.length; i++)
                           _buildTransactionItem(
                             sales[i],
@@ -776,10 +648,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
   Widget _buildDesktopTransactionHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.surfaceSoft,
         borderRadius: BorderRadius.only(
@@ -789,32 +658,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       ),
       child: const Row(
         children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              'Sale',
-              style: AppTextStyles.small,
-            ),
-          ),
+          SizedBox(width: 72, child: Text('Sale', style: AppTextStyles.small)),
           Expanded(
             flex: 2,
-            child: Text(
-              'Date & time',
-              style: AppTextStyles.small,
-            ),
+            child: Text('Date & time', style: AppTextStyles.small),
           ),
-          Expanded(
-            child: Text(
-              'Payment',
-              style: AppTextStyles.small,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Quantity',
-              style: AppTextStyles.small,
-            ),
-          ),
+          Expanded(child: Text('Payment', style: AppTextStyles.small)),
+          Expanded(child: Text('Quantity', style: AppTextStyles.small)),
           Expanded(
             child: Text(
               'Total',
@@ -833,12 +683,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     required bool desktop,
   }) {
     final profit =
-        (sale.unitPrice.toDouble() - sale.costPriceAtSale) *
-        sale.quantity;
+        (sale.unitPrice.toDouble() - sale.costPriceAtSale) * sale.quantity;
 
-    final payment = _formatPaymentName(
-      sale.paymentMethod,
-    );
+    final payment = _formatPaymentName(sale.paymentMethod);
 
     final total = sale.totalPrice.toDouble();
 
@@ -848,11 +695,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         decoration: isLast
             ? null
             : const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.divider,
-                  ),
-                ),
+                border: Border(bottom: BorderSide(color: AppColors.divider)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -860,9 +703,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _saleIcon(
-                  sale.paymentMethod,
-                ),
+                _saleIcon(sale.paymentMethod),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -870,9 +711,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     children: [
                       Text(
                         'Sale #${sale.id}',
-                        style: AppTextStyles.title.copyWith(
-                          fontSize: 14,
-                        ),
+                        style: AppTextStyles.title.copyWith(fontSize: 14),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -897,10 +736,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _infoChip(
-                  icon: Icons.payments_outlined,
-                  label: payment,
-                ),
+                _infoChip(icon: Icons.payments_outlined, label: payment),
                 _infoChip(
                   icon: Icons.shopping_cart_outlined,
                   label:
@@ -919,18 +755,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: isLast
           ? null
           : const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.divider,
-                ),
-              ),
+              border: Border(bottom: BorderSide(color: AppColors.divider)),
             ),
       child: Row(
         children: [
@@ -938,9 +767,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             width: 72,
             child: Text(
               '#${sale.id}',
-              style: AppTextStyles.title.copyWith(
-                fontSize: 13,
-              ),
+              style: AppTextStyles.title.copyWith(fontSize: 13),
             ),
           ),
           Expanded(
@@ -953,10 +780,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           Expanded(
             child: Row(
               children: [
-                _saleIcon(
-                  sale.paymentMethod,
-                  size: 30,
-                ),
+                _saleIcon(sale.paymentMethod, size: 30),
                 const SizedBox(width: 7),
                 Flexible(
                   child: Text(
@@ -970,28 +794,19 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               ],
             ),
           ),
-          Expanded(
-            child: Text(
-              '${sale.quantity}',
-              style: AppTextStyles.small,
-            ),
-          ),
+          Expanded(child: Text('${sale.quantity}', style: AppTextStyles.small)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   _formatCurrency(total),
-                  style: AppTextStyles.title.copyWith(
-                    fontSize: 14,
-                  ),
+                  style: AppTextStyles.title.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Profit ${_formatCurrency(profit)}',
-                  style: AppTextStyles.small.copyWith(
-                    color: AppColors.success,
-                  ),
+                  style: AppTextStyles.small.copyWith(color: AppColors.success),
                 ),
               ],
             ),
@@ -1001,10 +816,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     );
   }
 
-  Widget _saleIcon(
-    String paymentMethod, {
-    double size = 38,
-  }) {
+  Widget _saleIcon(String paymentMethod, {double size = 38}) {
     final method = paymentMethod.toLowerCase().trim();
 
     IconData icon;
@@ -1048,11 +860,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(
-        icon,
-        color: color,
-        size: size * 0.50,
-      ),
+      child: Icon(icon, color: color, size: size * 0.50),
     );
   }
 
@@ -1064,10 +872,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     final chipColor = color ?? AppColors.textSecondary;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: chipColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
@@ -1075,11 +880,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 14,
-            color: chipColor,
-          ),
+          Icon(icon, size: 14, color: chipColor),
           const SizedBox(width: 5),
           Text(
             label,
@@ -1112,10 +913,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'No sales in this period',
-            style: AppTextStyles.title,
-          ),
+          const Text('No sales in this period', style: AppTextStyles.title),
           const SizedBox(height: 5),
           const Text(
             'There are no completed sales to display for the selected period.',
@@ -1131,26 +929,17 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   // LOW STOCK
   // ============================================================
 
-  Widget _buildLowStockSection(
-    List<Product> lowStock,
-    double width,
-  ) {
+  Widget _buildLowStockSection(List<Product> lowStock, double width) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             const Expanded(
-              child: Text(
-                'Low stock',
-                style: AppTextStyles.title,
-              ),
+              child: Text('Low stock', style: AppTextStyles.title),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: lowStock.isEmpty
                     ? AppColors.successLight
@@ -1158,9 +947,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                lowStock.isEmpty
-                    ? 'Stock healthy'
-                    : '${lowStock.length} items',
+                lowStock.isEmpty ? 'Stock healthy' : '${lowStock.length} items',
                 style: AppTextStyles.small.copyWith(
                   color: lowStock.isEmpty
                       ? AppColors.success
@@ -1177,9 +964,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x06000000),
@@ -1224,10 +1009,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Inventory looks healthy',
-            style: AppTextStyles.title,
-          ),
+          const Text('Inventory looks healthy', style: AppTextStyles.title),
           const SizedBox(height: 5),
           const Text(
             'All products are currently above their low-stock threshold.',
@@ -1248,17 +1030,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         '${product.stock} ${product.stock == 1 ? 'unit' : 'units'}';
 
     return Container(
-      padding: EdgeInsets.all(
-        compact ? 14 : 16,
-      ),
+      padding: EdgeInsets.all(compact ? 14 : 16),
       decoration: isLast
           ? null
           : const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.divider,
-                ),
-              ),
+              border: Border(bottom: BorderSide(color: AppColors.divider)),
             ),
       child: Row(
         children: [
@@ -1282,9 +1058,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               children: [
                 Text(
                   product.name,
-                  style: AppTextStyles.title.copyWith(
-                    fontSize: 14,
-                  ),
+                  style: AppTextStyles.title.copyWith(fontSize: 14),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1298,10 +1072,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           ),
           const SizedBox(width: 12),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 7,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               color: AppColors.dangerLight,
               borderRadius: BorderRadius.circular(8),
@@ -1317,6 +1088,270 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         ],
       ),
     );
+  }
+
+  Widget _emailButton({
+    required DateTimeRange range,
+    required double totalSales,
+    required int itemsSold,
+    required double profit,
+    required Map<String, double> paymentBreakdown,
+    required List<Product> lowStock,
+    required List<Sale> sales,
+  }) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      icon: const Icon(Icons.email_outlined, size: 19),
+      label: const Text(
+        'Email PDF — 5 credits',
+        style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+      ),
+      onPressed: () => _emailSalesReport(
+        range: range,
+        totalSales: totalSales,
+        itemsSold: itemsSold,
+        profit: profit,
+        paymentBreakdown: paymentBreakdown,
+        lowStock: lowStock,
+        sales: sales,
+      ),
+    );
+  }
+
+  Future<void> _emailSalesReport({
+    required DateTimeRange range,
+    required double totalSales,
+    required int itemsSold,
+    required double profit,
+    required Map<String, double> paymentBreakdown,
+    required List<Product> lowStock,
+    required List<Sale> sales,
+  }) async {
+    final businessEmail = await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!mounted) {
+      return;
+    }
+
+    final recipientController = TextEditingController(text: businessEmail);
+
+    final recipient = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Email Sales PDF',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: SizedBox(
+            width: 420,
+            child: TextField(
+              controller: recipientController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                final value = recipientController.text.trim();
+
+                if (value.isEmpty) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      content: Text('Recipient email address is required.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(value);
+              },
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+
+    recipientController.dispose();
+
+    if (recipient == null || recipient.trim().isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      final file = await PdfReport.generateReport(
+        title: 'Sales Report',
+        sections: [
+          {
+            'title': _selectedFilter == 'Day'
+                ? 'Daily Overview'
+                : 'Sales Overview',
+            'headers': ['Metric', 'Value'],
+            'rows': [
+              ['Period', _formatDateRange(range)],
+              ['Total Sales', _formatCurrency(totalSales)],
+              ['Items Sold', _formatNumber(itemsSold)],
+              ['Profit', _formatCurrency(profit)],
+            ],
+          },
+          {
+            'title': 'Payment Breakdown',
+            'headers': ['Method', 'Amount'],
+            'rows': paymentBreakdown.entries
+                .map(
+                  (e) => [_formatPaymentName(e.key), _formatCurrency(e.value)],
+                )
+                .toList(),
+          },
+          {
+            'title': 'Sales Transactions',
+            'headers': [
+              'Sale',
+              'Date',
+              'Payment',
+              'Quantity',
+              'Total',
+              'Profit',
+            ],
+            'rows': sales.map((sale) {
+              final saleProfit =
+                  (sale.unitPrice.toDouble() - sale.costPriceAtSale) *
+                  sale.quantity;
+
+              return [
+                '#${sale.id}',
+                _formatDateTime(sale.createdAt),
+                _formatPaymentName(sale.paymentMethod),
+                '${sale.quantity}',
+                _formatCurrency(sale.totalPrice.toDouble()),
+                _formatCurrency(saleProfit),
+              ];
+            }).toList(),
+          },
+          {
+            'title': 'Low Stock',
+            'headers': ['Product', 'Stock'],
+            'rows': lowStock
+                .map((product) => [product.name, '${product.stock}'])
+                .toList(),
+          },
+        ],
+      );
+
+      final pdfBytes = await file.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId = await InstallationIdentity.getInstallationId(
+        settingsDao,
+      );
+
+      final reportId = DateTime.now().millisecondsSinceEpoch;
+
+      final businessName = await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName = businessName.trim().isEmpty
+          ? 'Business'
+          : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: reportId,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Sales Report',
+        body:
+            'Attached is the Sales Report PDF for '
+            '$normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'sales-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Sales PDF emailed to ${recipient.trim()}.',
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            e.message,
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+          action: e.retryable
+              ? SnackBarAction(
+                  label: 'Retry',
+                  textColor: Colors.white,
+                  onPressed: () => _emailSalesReport(
+                    range: range,
+                    totalSales: totalSales,
+                    itemsSold: itemsSold,
+                    profit: profit,
+                    paymentBreakdown: paymentBreakdown,
+                    lowStock: lowStock,
+                    sales: sales,
+                  ),
+                )
+              : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            'Unable to email sales PDF: $e',
+            style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    }
   }
 
   // ============================================================
@@ -1337,15 +1372,10 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(
-        compact ? 18 : 20,
-      ),
+      padding: EdgeInsets.all(compact ? 18 : 20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primaryDark,
-          ],
+          colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1376,23 +1406,49 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     sales: sales,
                   ),
                 ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: _emailButton(
+                    range: range,
+                    totalSales: totalSales,
+                    itemsSold: itemsSold,
+                    profit: profit,
+                    paymentBreakdown: paymentBreakdown,
+                    lowStock: lowStock,
+                    sales: sales,
+                  ),
+                ),
               ],
             )
           : Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: _exportContent(),
-                ),
+                Expanded(child: _exportContent()),
                 const SizedBox(width: 20),
-                _exportButton(
-                  range: range,
-                  totalSales: totalSales,
-                  itemsSold: itemsSold,
-                  profit: profit,
-                  paymentBreakdown: paymentBreakdown,
-                  lowStock: lowStock,
-                  sales: sales,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _exportButton(
+                      range: range,
+                      totalSales: totalSales,
+                      itemsSold: itemsSold,
+                      profit: profit,
+                      paymentBreakdown: paymentBreakdown,
+                      lowStock: lowStock,
+                      sales: sales,
+                    ),
+                    const SizedBox(height: 10),
+                    _emailButton(
+                      range: range,
+                      totalSales: totalSales,
+                      itemsSold: itemsSold,
+                      profit: profit,
+                      paymentBreakdown: paymentBreakdown,
+                      lowStock: lowStock,
+                      sales: sales,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1403,11 +1459,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     return const Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.picture_as_pdf_outlined,
-          color: Colors.white,
-          size: 30,
-        ),
+        Icon(Icons.picture_as_pdf_outlined, color: Colors.white, size: 30),
         SizedBox(width: 14),
         Expanded(
           child: Column(
@@ -1453,24 +1505,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
         backgroundColor: Colors.white,
         foregroundColor: AppColors.primary,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 13,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      icon: const Icon(
-        Icons.download_outlined,
-        size: 19,
-      ),
+      icon: const Icon(Icons.download_outlined, size: 19),
       label: const Text(
         'Export PDF',
-        style: TextStyle(
-          fontFamily: 'Poppins',
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
       ),
       onPressed: () async {
         try {
@@ -1481,35 +1522,17 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                 'title': _selectedFilter == 'Day'
                     ? 'Daily Overview'
                     : 'Sales Overview',
-                'headers': [
-                  'Metric',
-                  'Value',
-                ],
+                'headers': ['Metric', 'Value'],
                 'rows': [
-                  [
-                    'Period',
-                    _formatDateRange(range),
-                  ],
-                  [
-                    'Total Sales',
-                    _formatCurrency(totalSales),
-                  ],
-                  [
-                    'Items Sold',
-                    _formatNumber(itemsSold),
-                  ],
-                  [
-                    'Profit',
-                    _formatCurrency(profit),
-                  ],
+                  ['Period', _formatDateRange(range)],
+                  ['Total Sales', _formatCurrency(totalSales)],
+                  ['Items Sold', _formatNumber(itemsSold)],
+                  ['Profit', _formatCurrency(profit)],
                 ],
               },
               {
                 'title': 'Payment Breakdown',
-                'headers': [
-                  'Method',
-                  'Amount',
-                ],
+                'headers': ['Method', 'Amount'],
                 'rows': paymentBreakdown.entries
                     .map(
                       (e) => [
@@ -1529,41 +1552,26 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   'Total',
                   'Profit',
                 ],
-                'rows': sales.map(
-                  (sale) {
-                    final saleProfit =
-                        (sale.unitPrice.toDouble() -
-                                sale.costPriceAtSale) *
-                            sale.quantity;
+                'rows': sales.map((sale) {
+                  final saleProfit =
+                      (sale.unitPrice.toDouble() - sale.costPriceAtSale) *
+                      sale.quantity;
 
-                    return [
-                      '#${sale.id}',
-                      _formatDateTime(sale.createdAt),
-                      _formatPaymentName(
-                        sale.paymentMethod,
-                      ),
-                      '${sale.quantity}',
-                      _formatCurrency(
-                        sale.totalPrice.toDouble(),
-                      ),
-                      _formatCurrency(saleProfit),
-                    ];
-                  },
-                ).toList(),
+                  return [
+                    '#${sale.id}',
+                    _formatDateTime(sale.createdAt),
+                    _formatPaymentName(sale.paymentMethod),
+                    '${sale.quantity}',
+                    _formatCurrency(sale.totalPrice.toDouble()),
+                    _formatCurrency(saleProfit),
+                  ];
+                }).toList(),
               },
               {
                 'title': 'Low Stock',
-                'headers': [
-                  'Product',
-                  'Stock',
-                ],
+                'headers': ['Product', 'Stock'],
                 'rows': lowStock
-                    .map(
-                      (product) => [
-                        product.name,
-                        '${product.stock}',
-                      ],
-                    )
+                    .map((product) => [product.name, '${product.stock}'])
                     .toList(),
               },
             ],
@@ -1618,15 +1626,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       width: 132,
       height: 42,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: AppColors.surfaceSoft,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.border,
-          ),
+          border: Border.all(color: AppColors.border),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
@@ -1643,15 +1647,10 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             selectedItemBuilder: (context) {
               return const [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Today'),
-                ),
+                Align(alignment: Alignment.centerLeft, child: Text('Today')),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text('This Week'),
@@ -1664,33 +1663,18 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text('This Year'),
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Custom'),
-                ),
+                Align(alignment: Alignment.centerLeft, child: Text('Custom')),
               ];
             },
             items: const [
-              DropdownMenuItem<String>(
-                value: 'Day',
-                child: Text('Today'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'Week',
-                child: Text('This Week'),
-              ),
+              DropdownMenuItem<String>(value: 'Day', child: Text('Today')),
+              DropdownMenuItem<String>(value: 'Week', child: Text('This Week')),
               DropdownMenuItem<String>(
                 value: 'Month',
                 child: Text('This Month'),
               ),
-              DropdownMenuItem<String>(
-                value: 'Year',
-                child: Text('This Year'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'Custom',
-                child: Text('Custom'),
-              ),
+              DropdownMenuItem<String>(value: 'Year', child: Text('This Year')),
+              DropdownMenuItem<String>(value: 'Custom', child: Text('Custom')),
             ],
             onChanged: (String? value) async {
               if (value == null) {
@@ -1715,19 +1699,14 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   Future<void> _selectCustomDateRange() async {
     final now = DateTime.now();
 
-    final today = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    );
+    final today = DateTime(now.year, now.month, now.day);
 
     final existingRange = _selectedDateRange;
 
-    final initialRange = existingRange ??
+    final initialRange =
+        existingRange ??
         DateTimeRange(
-          start: today.subtract(
-            const Duration(days: 7),
-          ),
+          start: today.subtract(const Duration(days: 7)),
           end: today,
         );
 
@@ -1766,82 +1745,44 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   DateTimeRange _getRange() {
     final now = DateTime.now();
 
-    final today = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    );
+    final today = DateTime(now.year, now.month, now.day);
 
     switch (_selectedFilter) {
       case 'Day':
         return DateTimeRange(
           start: today,
-          end: today.add(
-            const Duration(days: 1),
-          ),
+          end: today.add(const Duration(days: 1)),
         );
 
       case 'Week':
-        final start = today.subtract(
-          Duration(
-            days: today.weekday - 1,
-          ),
-        );
+        final start = today.subtract(Duration(days: today.weekday - 1));
 
         return DateTimeRange(
           start: start,
-          end: start.add(
-            const Duration(days: 7),
-          ),
+          end: start.add(const Duration(days: 7)),
         );
 
       case 'Month':
-        final start = DateTime(
-          now.year,
-          now.month,
-          1,
-        );
+        final start = DateTime(now.year, now.month, 1);
 
-        final end = DateTime(
-          now.year,
-          now.month + 1,
-          1,
-        );
+        final end = DateTime(now.year, now.month + 1, 1);
 
-        return DateTimeRange(
-          start: start,
-          end: end,
-        );
+        return DateTimeRange(start: start, end: end);
 
       case 'Year':
-        final start = DateTime(
-          now.year,
-          1,
-          1,
-        );
+        final start = DateTime(now.year, 1, 1);
 
-        final end = DateTime(
-          now.year + 1,
-          1,
-          1,
-        );
+        final end = DateTime(now.year + 1, 1, 1);
 
-        return DateTimeRange(
-          start: start,
-          end: end,
-        );
+        return DateTimeRange(start: start, end: end);
 
       case 'Custom':
         final selected = _selectedDateRange;
 
         if (selected == null) {
           return DateTimeRange(
-            start: today.subtract(
-              const Duration(days: 7),
-            ),
-            end: today.add(
-              const Duration(days: 1),
-            ),
+            start: today.subtract(const Duration(days: 7)),
+            end: today.add(const Duration(days: 1)),
           );
         }
 
@@ -1855,21 +1796,14 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           selected.end.year,
           selected.end.month,
           selected.end.day,
-        ).add(
-          const Duration(days: 1),
-        );
+        ).add(const Duration(days: 1));
 
-        return DateTimeRange(
-          start: start,
-          end: end,
-        );
+        return DateTimeRange(start: start, end: end);
 
       default:
         return DateTimeRange(
           start: today,
-          end: today.add(
-            const Duration(days: 1),
-          ),
+          end: today.add(const Duration(days: 1)),
         );
     }
   }
@@ -1885,11 +1819,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       return start;
     }
 
-    final end = _formatDate(
-      range.end.subtract(
-        const Duration(days: 1),
-      ),
-    );
+    final end = _formatDate(range.end.subtract(const Duration(days: 1)));
 
     return '$start – $end';
   }
@@ -1966,14 +1896,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           return value;
         }
 
-        return value[0].toUpperCase() +
-            value.substring(1);
+        return value[0].toUpperCase() + value.substring(1);
     }
   }
 
-  Map<String, double> _normalisePaymentBreakdown(
-    Map raw,
-  ) {
+  Map<String, double> _normalisePaymentBreakdown(Map raw) {
     return {
       'cash': _toDouble(raw['cash']),
       'pos': _toDouble(raw['pos']),
@@ -1998,10 +1925,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       return value.toDouble();
     }
 
-    return double.tryParse(
-          value?.toString() ?? '',
-        ) ??
-        0;
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   int _toInt(dynamic value) {
@@ -2013,10 +1937,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       return value.toInt();
     }
 
-    return int.tryParse(
-          value?.toString() ?? '',
-        ) ??
-        0;
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   // ============================================================
@@ -2093,14 +2014,9 @@ class _LoadingState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(
-              color: AppColors.primary,
-            ),
+            CircularProgressIndicator(color: AppColors.primary),
             SizedBox(height: 16),
-            Text(
-              'Loading sales report...',
-              style: AppTextStyles.bodySecondary,
-            ),
+            Text('Loading sales report...', style: AppTextStyles.bodySecondary),
           ],
         ),
       ),
@@ -2129,10 +2045,7 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.textMuted,
             ),
             SizedBox(height: 16),
-            Text(
-              'No sales data available',
-              style: AppTextStyles.title,
-            ),
+            Text('No sales data available', style: AppTextStyles.title),
             SizedBox(height: 6),
             Text(
               'There is currently no sales data to display.',
@@ -2154,10 +2067,7 @@ class _ErrorState extends StatelessWidget {
   final String error;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -2165,16 +2075,12 @@ class _ErrorState extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Container(
-          constraints: const BoxConstraints(
-            maxWidth: 600,
-          ),
+          constraints: const BoxConstraints(maxWidth: 600),
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2205,14 +2111,9 @@ class _ErrorState extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceSoft,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.border,
-                  ),
+                  border: Border.all(color: AppColors.border),
                 ),
-                child: SelectableText(
-                  error,
-                  style: AppTextStyles.small,
-                ),
+                child: SelectableText(error, style: AppTextStyles.small),
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
@@ -2229,10 +2130,7 @@ class _ErrorState extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                icon: const Icon(
-                  Icons.refresh,
-                  size: 18,
-                ),
+                icon: const Icon(Icons.refresh, size: 18),
                 label: const Text(
                   'Try Again',
                   style: TextStyle(
