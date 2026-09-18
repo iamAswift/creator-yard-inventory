@@ -1,6 +1,16 @@
 // lib/features/reports/category_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import '../../database/daos/settings_dao.dart';
+
+import '../../core/system/installation_identity.dart';
+
+import '../../core/email/email_service.dart';
+
+import '../../core/business/business_identity.dart';
 
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/styles.dart';
@@ -17,6 +27,7 @@ class CategoryReportScreen extends StatefulWidget {
 
 class _CategoryReportScreenState extends State<CategoryReportScreen> {
   late final SalesDao salesDao;
+  late final SettingsDao settingsDao;
 
   String _selectedFilter = "Month";
   DateTimeRange? _selectedDateRange;
@@ -27,6 +38,7 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
 
     final db = getDatabase();
     salesDao = SalesDao(db);
+    settingsDao = SettingsDao(db);
   }
 
   @override
@@ -645,6 +657,8 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
                 const SizedBox(height: AppSpacing.lg),
 
                 _buildExportButton(categories: categories),
+                const SizedBox(height: AppSpacing.md),
+                _buildEmailButton(categories: categories),
               ],
             );
           }
@@ -656,6 +670,8 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
               const SizedBox(width: AppSpacing.xl),
 
               _buildExportButton(categories: categories),
+              const SizedBox(width: AppSpacing.md),
+              _buildEmailButton(categories: categories),
             ],
           );
         },
@@ -834,6 +850,266 @@ class _CategoryReportScreenState extends State<CategoryReportScreen> {
   }
 
   // ============================================================
+  Widget _buildEmailButton({
+    required List<Map<String, dynamic>> categories,
+  }) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 13,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      ),
+      icon: const Icon(Icons.email_outlined, size: 19),
+      label: const Text(
+        "Email PDF — 5 credits",
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onPressed: () => _emailCategoryReport(categories),
+    );
+  }
+
+  Future<void> _emailCategoryReport(
+    List<Map<String, dynamic>> categories,
+  ) async {
+    final businessEmail =
+        await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!mounted) {
+      return;
+    }
+
+    final recipientController = TextEditingController(
+      text: businessEmail.trim(),
+    );
+
+    final recipient = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Email Category PDF'),
+          content: TextField(
+            controller: recipientController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Recipient email',
+              hintText: 'customer@example.com',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = recipientController.text.trim();
+
+                if (value.isEmpty) {
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(value);
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+
+    recipientController.dispose();
+
+    if (recipient == null || recipient.trim().isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      final range = _getRange();
+
+      final file = await PdfReport.generateReport(
+        title: "Category Report",
+        sections: [
+          {
+            "title": "Category Performance",
+            "headers": [
+              "Category",
+              "Sales",
+              "Items Sold",
+              "Profit",
+              "Stock Value",
+            ],
+            "rows": categories.map((category) {
+              return [
+                category["categoryName"]?.toString() ?? "Unknown",
+                _formatCurrency(_toDouble(category["totalSales"])),
+                _formatNumber(_toInt(category["itemsSold"])),
+                _formatCurrency(_toDouble(category["profit"])),
+                _formatCurrency(_toDouble(category["stockValue"])),
+              ];
+            }).toList(),
+          },
+          {
+            "title": "Report Period",
+            "headers": ["Filter", "Start", "End"],
+            "rows": [
+              [
+                _filterLabel(),
+                _formatDate(range.start),
+                _formatDate(range.end),
+              ],
+            ],
+          },
+          {
+            "title": "Summary",
+            "headers": [
+              "Total Sales",
+              "Total Profit",
+              "Items Sold",
+              "Stock Value",
+            ],
+            "rows": [
+              [
+                _formatCurrency(
+                  categories.fold<double>(
+                    0,
+                    (sum, category) =>
+                        sum + _toDouble(category["totalSales"]),
+                  ),
+                ),
+                _formatCurrency(
+                  categories.fold<double>(
+                    0,
+                    (sum, category) =>
+                        sum + _toDouble(category["profit"]),
+                  ),
+                ),
+                _formatNumber(
+                  categories.fold<int>(
+                    0,
+                    (sum, category) =>
+                        sum + _toInt(category["itemsSold"]),
+                  ),
+                ),
+                _formatCurrency(
+                  categories.fold<double>(
+                    0,
+                    (sum, category) =>
+                        sum + _toDouble(category["stockValue"]),
+                  ),
+                ),
+              ],
+            ],
+          },
+        ],
+      );
+
+      final pdfBytes = await file.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName =
+          businessName.trim().isNotEmpty
+              ? businessName.trim()
+              : 'Creator Yard';
+
+      final reportId = DateTime.now().millisecondsSinceEpoch;
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: reportId,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Category Report',
+        body:
+            'Attached is the Category Report PDF for '
+            '$normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'category-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Category PDF emailed to ${recipient.trim()}',
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            e.message,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+          action: e.retryable
+              ? SnackBarAction(
+                  label: 'Retry',
+                  onPressed: () {
+                    _emailCategoryReport(categories);
+                  },
+                )
+              : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            'Unable to email PDF: $e',
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
   // FILTER
   // ============================================================
 
