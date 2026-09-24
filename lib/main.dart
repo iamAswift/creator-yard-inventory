@@ -13,8 +13,8 @@ import 'core/email/sale_email_worker.dart';
 import 'core/backup/backup_service.dart';
 import 'core/app/app_refresh.dart';
 import 'core/system/installation_registration_service.dart';
-import 'core/licensing/demo_license_service.dart';
 import 'core/licensing/commercial_license_provider.dart';
+import 'core/licensing/hybrid_license_provider.dart';
 import 'core/licensing/license_repository.dart';
 import 'core/licensing/license_state.dart';
 import 'core/system/installation_identity.dart';
@@ -94,7 +94,7 @@ Future<void> main() async {
   final licenseRepository = LicenseRepository(
     provider: isCommercialBuild
         ? CommercialLicenseProvider(settingsDao: settingsDao)
-        : DemoLicenseService(settingsDao: settingsDao),
+        : HybridLicenseProvider(settingsDao: settingsDao),
   );
 
   LicenseState? licenseState;
