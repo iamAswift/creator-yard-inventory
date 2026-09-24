@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supermarket_inventory/database/app_database.dart';
 
 import 'package:supermarket_inventory/features/attendance/attendance_screen.dart';
+import 'package:supermarket_inventory/features/inventory/stock_verification_screen.dart';
 import 'package:supermarket_inventory/features/stocks/receive_stock_screen.dart';
 import 'package:supermarket_inventory/features/suppliers/stock_adjustment_screen.dart';
 
@@ -217,6 +218,16 @@ GoRouter appRouter({
             path: '/stock-adjustment',
             builder: (context, state) {
               return const StockAdjustmentScreen();
+            },
+          ),
+
+          // ======================================================
+          // SYSTEM STOCK VERIFICATION
+          // ======================================================
+          GoRoute(
+            path: '/stock-verification',
+            builder: (context, state) {
+              return const StockVerificationScreen();
             },
           ),
 

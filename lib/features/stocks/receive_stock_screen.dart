@@ -3,14 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' show Value;
 
-
 import 'package:supermarket_inventory/core/widgets/back_button.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/product_dao.dart';
 import '../../database/daos/supplier_dao.dart';
 import '../../database/daos/stock_movement_dao.dart';
-import 'package:go_router/go_router.dart';
 
 class ReceiveStockScreen extends StatefulWidget {
   const ReceiveStockScreen({super.key});
@@ -72,8 +70,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
       // 1. Get current product
       // ------------------------------------------------------------
 
-      final product =
-          await _productDao.getProductById(_selectedProductId!);
+      final product = await _productDao.getProductById(_selectedProductId!);
 
       // ------------------------------------------------------------
       // 2. Calculate new stock
@@ -101,10 +98,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
       // 4. Update current product stock
       // ------------------------------------------------------------
 
-      await _productDao.updateProductStock(
-        _selectedProductId!,
-        newStock,
-      );
+      await _productDao.updateProductStock(_selectedProductId!, newStock);
 
       if (!mounted) return;
 
@@ -121,11 +115,9 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to receive stock: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to receive stock: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -142,10 +134,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
 
       appBar: AppBar(
         leading: const CentralBackButton(),
-        title: const Text(
-          'Receive Stock',
-          style: AppTextStyles.heading,
-        ),
+        title: const Text('Receive Stock', style: AppTextStyles.heading),
         backgroundColor: AppColors.primary,
       ),
 
@@ -157,25 +146,19 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
 
           child: ListView(
             children: [
-
               // ======================================================
               // PRODUCT
               // ======================================================
-
               FutureBuilder<List<Product>>(
                 future: _productDao.getAllProducts(),
 
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (snapshot.hasError) {
-                    return Text(
-                      'Error loading products: ${snapshot.error}',
-                    );
+                    return Text('Error loading products: ${snapshot.error}');
                   }
 
                   final products = snapshot.data ?? [];
@@ -190,9 +173,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
                   return DropdownButtonFormField<int>(
                     initialValue: _selectedProductId,
 
-                    decoration: const InputDecoration(
-                      labelText: 'Product',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Product'),
 
                     items: products.map((product) {
                       return DropdownMenuItem<int>(
@@ -200,8 +181,8 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
 
                         child: Text(
                           '${product.name} '
-                          '(${product.brand }) '
-                          '- Stock: ${product.stock }',
+                          '(${product.brand}) '
+                          '- Stock: ${product.stock}',
                         ),
                       );
                     }).toList(),
@@ -228,21 +209,16 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
               // ======================================================
               // SUPPLIER
               // ======================================================
-
               FutureBuilder<List<Supplier>>(
                 future: _supplierDao.getAllSuppliers(),
 
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (snapshot.hasError) {
-                    return Text(
-                      'Error loading suppliers: ${snapshot.error}',
-                    );
+                    return Text('Error loading suppliers: ${snapshot.error}');
                   }
 
                   final suppliers = snapshot.data ?? [];
@@ -257,17 +233,13 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
                   return DropdownButtonFormField<int>(
                     initialValue: _selectedSupplierId,
 
-                    decoration: const InputDecoration(
-                      labelText: 'Supplier',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Supplier'),
 
                     items: suppliers.map((supplier) {
                       return DropdownMenuItem<int>(
                         value: supplier.id,
 
-                        child: Text(
-                          supplier.name,
-                        ),
+                        child: Text(supplier.name),
                       );
                     }).toList(),
 
@@ -293,7 +265,6 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
               // ======================================================
               // QUANTITY
               // ======================================================
-
               TextFormField(
                 controller: _quantityController,
 
@@ -324,7 +295,6 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
               // ======================================================
               // UNIT PRICE
               // ======================================================
-
               TextFormField(
                 controller: _unitPriceController,
 
@@ -333,8 +303,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
                   hintText: 'e.g. 1000',
                 ),
 
-                keyboardType:
-                    const TextInputType.numberWithOptions(
+                keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
 
@@ -343,8 +312,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
                     return 'Enter unit cost price';
                   }
 
-                  final price =
-                      double.tryParse(value.trim());
+                  final price = double.tryParse(value.trim());
 
                   if (price == null || price < 0) {
                     return 'Enter a valid price';
@@ -357,27 +325,8 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
               const SizedBox(height: 24),
 
               // ======================================================
-              // STOCK ADJUSTMENT TEST
-              // ======================================================
-
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                ),
-                onPressed: () {
-                  context.push('/stock-adjustment');
-                },
-                child: const Text(
-                  'Stock Adjustment',
-                  style: AppTextStyles.body,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              // ======================================================
               // SAVE
               // ======================================================
-
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
@@ -389,9 +338,7 @@ class _ReceiveStockScreenState extends State<ReceiveStockScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text(
                         'Save Stock Movement',

@@ -7943,6 +7943,1089 @@ class SaleEmailQueuesCompanion extends UpdateCompanion<SaleEmailQueue> {
   }
 }
 
+class $StockVerificationsTable extends StockVerifications
+    with TableInfo<$StockVerificationsTable, StockVerification> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockVerificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _businessDateMeta = const VerificationMeta(
+    'businessDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> businessDate = GeneratedColumn<DateTime>(
+    'business_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countedByUserIdMeta = const VerificationMeta(
+    'countedByUserId',
+  );
+  @override
+  late final GeneratedColumn<int> countedByUserId = GeneratedColumn<int>(
+    'counted_by_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id)',
+    ),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _submittedAtMeta = const VerificationMeta(
+    'submittedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> submittedAt = GeneratedColumn<DateTime>(
+    'submitted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('draft'),
+  );
+  static const VerificationMeta _reviewedByUserIdMeta = const VerificationMeta(
+    'reviewedByUserId',
+  );
+  @override
+  late final GeneratedColumn<int> reviewedByUserId = GeneratedColumn<int>(
+    'reviewed_by_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id)',
+    ),
+  );
+  static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
+    'reviewedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> reviewedAt = GeneratedColumn<DateTime>(
+    'reviewed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    businessDate,
+    countedByUserId,
+    startedAt,
+    submittedAt,
+    status,
+    reviewedByUserId,
+    reviewedAt,
+    notes,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_verifications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StockVerification> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('business_date')) {
+      context.handle(
+        _businessDateMeta,
+        businessDate.isAcceptableOrUnknown(
+          data['business_date']!,
+          _businessDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_businessDateMeta);
+    }
+    if (data.containsKey('counted_by_user_id')) {
+      context.handle(
+        _countedByUserIdMeta,
+        countedByUserId.isAcceptableOrUnknown(
+          data['counted_by_user_id']!,
+          _countedByUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_countedByUserIdMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    }
+    if (data.containsKey('submitted_at')) {
+      context.handle(
+        _submittedAtMeta,
+        submittedAt.isAcceptableOrUnknown(
+          data['submitted_at']!,
+          _submittedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('reviewed_by_user_id')) {
+      context.handle(
+        _reviewedByUserIdMeta,
+        reviewedByUserId.isAcceptableOrUnknown(
+          data['reviewed_by_user_id']!,
+          _reviewedByUserIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reviewed_at')) {
+      context.handle(
+        _reviewedAtMeta,
+        reviewedAt.isAcceptableOrUnknown(data['reviewed_at']!, _reviewedAtMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StockVerification map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockVerification(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      businessDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}business_date'],
+      )!,
+      countedByUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}counted_by_user_id'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      submittedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}submitted_at'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      reviewedByUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reviewed_by_user_id'],
+      ),
+      reviewedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reviewed_at'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+    );
+  }
+
+  @override
+  $StockVerificationsTable createAlias(String alias) {
+    return $StockVerificationsTable(attachedDatabase, alias);
+  }
+}
+
+class StockVerification extends DataClass
+    implements Insertable<StockVerification> {
+  final int id;
+
+  /// Calendar/business date being verified.
+  final DateTime businessDate;
+
+  /// User who physically performed the count.
+  final int countedByUserId;
+
+  /// When the verification was started.
+  final DateTime startedAt;
+
+  /// When the verification was submitted for review.
+  final DateTime? submittedAt;
+
+  /// Workflow status:
+  /// draft → submitted → approved/rejected
+  final String status;
+
+  /// Manager/owner who reviewed the verification.
+  final int? reviewedByUserId;
+
+  /// When the verification was reviewed.
+  final DateTime? reviewedAt;
+
+  /// Optional review/submission notes.
+  final String? notes;
+  const StockVerification({
+    required this.id,
+    required this.businessDate,
+    required this.countedByUserId,
+    required this.startedAt,
+    this.submittedAt,
+    required this.status,
+    this.reviewedByUserId,
+    this.reviewedAt,
+    this.notes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['business_date'] = Variable<DateTime>(businessDate);
+    map['counted_by_user_id'] = Variable<int>(countedByUserId);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || submittedAt != null) {
+      map['submitted_at'] = Variable<DateTime>(submittedAt);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || reviewedByUserId != null) {
+      map['reviewed_by_user_id'] = Variable<int>(reviewedByUserId);
+    }
+    if (!nullToAbsent || reviewedAt != null) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  StockVerificationsCompanion toCompanion(bool nullToAbsent) {
+    return StockVerificationsCompanion(
+      id: Value(id),
+      businessDate: Value(businessDate),
+      countedByUserId: Value(countedByUserId),
+      startedAt: Value(startedAt),
+      submittedAt: submittedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(submittedAt),
+      status: Value(status),
+      reviewedByUserId: reviewedByUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewedByUserId),
+      reviewedAt: reviewedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewedAt),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+    );
+  }
+
+  factory StockVerification.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockVerification(
+      id: serializer.fromJson<int>(json['id']),
+      businessDate: serializer.fromJson<DateTime>(json['businessDate']),
+      countedByUserId: serializer.fromJson<int>(json['countedByUserId']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      submittedAt: serializer.fromJson<DateTime?>(json['submittedAt']),
+      status: serializer.fromJson<String>(json['status']),
+      reviewedByUserId: serializer.fromJson<int?>(json['reviewedByUserId']),
+      reviewedAt: serializer.fromJson<DateTime?>(json['reviewedAt']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'businessDate': serializer.toJson<DateTime>(businessDate),
+      'countedByUserId': serializer.toJson<int>(countedByUserId),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'submittedAt': serializer.toJson<DateTime?>(submittedAt),
+      'status': serializer.toJson<String>(status),
+      'reviewedByUserId': serializer.toJson<int?>(reviewedByUserId),
+      'reviewedAt': serializer.toJson<DateTime?>(reviewedAt),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  StockVerification copyWith({
+    int? id,
+    DateTime? businessDate,
+    int? countedByUserId,
+    DateTime? startedAt,
+    Value<DateTime?> submittedAt = const Value.absent(),
+    String? status,
+    Value<int?> reviewedByUserId = const Value.absent(),
+    Value<DateTime?> reviewedAt = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+  }) => StockVerification(
+    id: id ?? this.id,
+    businessDate: businessDate ?? this.businessDate,
+    countedByUserId: countedByUserId ?? this.countedByUserId,
+    startedAt: startedAt ?? this.startedAt,
+    submittedAt: submittedAt.present ? submittedAt.value : this.submittedAt,
+    status: status ?? this.status,
+    reviewedByUserId: reviewedByUserId.present
+        ? reviewedByUserId.value
+        : this.reviewedByUserId,
+    reviewedAt: reviewedAt.present ? reviewedAt.value : this.reviewedAt,
+    notes: notes.present ? notes.value : this.notes,
+  );
+  StockVerification copyWithCompanion(StockVerificationsCompanion data) {
+    return StockVerification(
+      id: data.id.present ? data.id.value : this.id,
+      businessDate: data.businessDate.present
+          ? data.businessDate.value
+          : this.businessDate,
+      countedByUserId: data.countedByUserId.present
+          ? data.countedByUserId.value
+          : this.countedByUserId,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      submittedAt: data.submittedAt.present
+          ? data.submittedAt.value
+          : this.submittedAt,
+      status: data.status.present ? data.status.value : this.status,
+      reviewedByUserId: data.reviewedByUserId.present
+          ? data.reviewedByUserId.value
+          : this.reviewedByUserId,
+      reviewedAt: data.reviewedAt.present
+          ? data.reviewedAt.value
+          : this.reviewedAt,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockVerification(')
+          ..write('id: $id, ')
+          ..write('businessDate: $businessDate, ')
+          ..write('countedByUserId: $countedByUserId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('submittedAt: $submittedAt, ')
+          ..write('status: $status, ')
+          ..write('reviewedByUserId: $reviewedByUserId, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    businessDate,
+    countedByUserId,
+    startedAt,
+    submittedAt,
+    status,
+    reviewedByUserId,
+    reviewedAt,
+    notes,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockVerification &&
+          other.id == this.id &&
+          other.businessDate == this.businessDate &&
+          other.countedByUserId == this.countedByUserId &&
+          other.startedAt == this.startedAt &&
+          other.submittedAt == this.submittedAt &&
+          other.status == this.status &&
+          other.reviewedByUserId == this.reviewedByUserId &&
+          other.reviewedAt == this.reviewedAt &&
+          other.notes == this.notes);
+}
+
+class StockVerificationsCompanion extends UpdateCompanion<StockVerification> {
+  final Value<int> id;
+  final Value<DateTime> businessDate;
+  final Value<int> countedByUserId;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> submittedAt;
+  final Value<String> status;
+  final Value<int?> reviewedByUserId;
+  final Value<DateTime?> reviewedAt;
+  final Value<String?> notes;
+  const StockVerificationsCompanion({
+    this.id = const Value.absent(),
+    this.businessDate = const Value.absent(),
+    this.countedByUserId = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.submittedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.reviewedByUserId = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.notes = const Value.absent(),
+  });
+  StockVerificationsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime businessDate,
+    required int countedByUserId,
+    this.startedAt = const Value.absent(),
+    this.submittedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.reviewedByUserId = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.notes = const Value.absent(),
+  }) : businessDate = Value(businessDate),
+       countedByUserId = Value(countedByUserId);
+  static Insertable<StockVerification> custom({
+    Expression<int>? id,
+    Expression<DateTime>? businessDate,
+    Expression<int>? countedByUserId,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? submittedAt,
+    Expression<String>? status,
+    Expression<int>? reviewedByUserId,
+    Expression<DateTime>? reviewedAt,
+    Expression<String>? notes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (businessDate != null) 'business_date': businessDate,
+      if (countedByUserId != null) 'counted_by_user_id': countedByUserId,
+      if (startedAt != null) 'started_at': startedAt,
+      if (submittedAt != null) 'submitted_at': submittedAt,
+      if (status != null) 'status': status,
+      if (reviewedByUserId != null) 'reviewed_by_user_id': reviewedByUserId,
+      if (reviewedAt != null) 'reviewed_at': reviewedAt,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  StockVerificationsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? businessDate,
+    Value<int>? countedByUserId,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? submittedAt,
+    Value<String>? status,
+    Value<int?>? reviewedByUserId,
+    Value<DateTime?>? reviewedAt,
+    Value<String?>? notes,
+  }) {
+    return StockVerificationsCompanion(
+      id: id ?? this.id,
+      businessDate: businessDate ?? this.businessDate,
+      countedByUserId: countedByUserId ?? this.countedByUserId,
+      startedAt: startedAt ?? this.startedAt,
+      submittedAt: submittedAt ?? this.submittedAt,
+      status: status ?? this.status,
+      reviewedByUserId: reviewedByUserId ?? this.reviewedByUserId,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (businessDate.present) {
+      map['business_date'] = Variable<DateTime>(businessDate.value);
+    }
+    if (countedByUserId.present) {
+      map['counted_by_user_id'] = Variable<int>(countedByUserId.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (submittedAt.present) {
+      map['submitted_at'] = Variable<DateTime>(submittedAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (reviewedByUserId.present) {
+      map['reviewed_by_user_id'] = Variable<int>(reviewedByUserId.value);
+    }
+    if (reviewedAt.present) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockVerificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('businessDate: $businessDate, ')
+          ..write('countedByUserId: $countedByUserId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('submittedAt: $submittedAt, ')
+          ..write('status: $status, ')
+          ..write('reviewedByUserId: $reviewedByUserId, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StockVerificationItemsTable extends StockVerificationItems
+    with TableInfo<$StockVerificationItemsTable, StockVerificationItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockVerificationItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _verificationIdMeta = const VerificationMeta(
+    'verificationId',
+  );
+  @override
+  late final GeneratedColumn<int> verificationId = GeneratedColumn<int>(
+    'verification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES stock_verifications (id)',
+    ),
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<int> productId = GeneratedColumn<int>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES products (id)',
+    ),
+  );
+  static const VerificationMeta _expectedStockMeta = const VerificationMeta(
+    'expectedStock',
+  );
+  @override
+  late final GeneratedColumn<int> expectedStock = GeneratedColumn<int>(
+    'expected_stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _physicalCountMeta = const VerificationMeta(
+    'physicalCount',
+  );
+  @override
+  late final GeneratedColumn<int> physicalCount = GeneratedColumn<int>(
+    'physical_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _varianceMeta = const VerificationMeta(
+    'variance',
+  );
+  @override
+  late final GeneratedColumn<int> variance = GeneratedColumn<int>(
+    'variance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _countedAtMeta = const VerificationMeta(
+    'countedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> countedAt = GeneratedColumn<DateTime>(
+    'counted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    verificationId,
+    productId,
+    expectedStock,
+    physicalCount,
+    variance,
+    countedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_verification_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StockVerificationItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('verification_id')) {
+      context.handle(
+        _verificationIdMeta,
+        verificationId.isAcceptableOrUnknown(
+          data['verification_id']!,
+          _verificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_verificationIdMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('expected_stock')) {
+      context.handle(
+        _expectedStockMeta,
+        expectedStock.isAcceptableOrUnknown(
+          data['expected_stock']!,
+          _expectedStockMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedStockMeta);
+    }
+    if (data.containsKey('physical_count')) {
+      context.handle(
+        _physicalCountMeta,
+        physicalCount.isAcceptableOrUnknown(
+          data['physical_count']!,
+          _physicalCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_physicalCountMeta);
+    }
+    if (data.containsKey('variance')) {
+      context.handle(
+        _varianceMeta,
+        variance.isAcceptableOrUnknown(data['variance']!, _varianceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_varianceMeta);
+    }
+    if (data.containsKey('counted_at')) {
+      context.handle(
+        _countedAtMeta,
+        countedAt.isAcceptableOrUnknown(data['counted_at']!, _countedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StockVerificationItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockVerificationItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      verificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}verification_id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}product_id'],
+      )!,
+      expectedStock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_stock'],
+      )!,
+      physicalCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}physical_count'],
+      )!,
+      variance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}variance'],
+      )!,
+      countedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}counted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StockVerificationItemsTable createAlias(String alias) {
+    return $StockVerificationItemsTable(attachedDatabase, alias);
+  }
+}
+
+class StockVerificationItem extends DataClass
+    implements Insertable<StockVerificationItem> {
+  final int id;
+
+  /// Parent stock verification.
+  final int verificationId;
+
+  /// Product being counted.
+  final int productId;
+
+  /// System stock at the point the verification item was created.
+  final int expectedStock;
+
+  /// Physical quantity entered by the counter.
+  final int physicalCount;
+
+  /// physicalCount - expectedStock.
+  final int variance;
+
+  /// When this product was counted.
+  final DateTime countedAt;
+  const StockVerificationItem({
+    required this.id,
+    required this.verificationId,
+    required this.productId,
+    required this.expectedStock,
+    required this.physicalCount,
+    required this.variance,
+    required this.countedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['verification_id'] = Variable<int>(verificationId);
+    map['product_id'] = Variable<int>(productId);
+    map['expected_stock'] = Variable<int>(expectedStock);
+    map['physical_count'] = Variable<int>(physicalCount);
+    map['variance'] = Variable<int>(variance);
+    map['counted_at'] = Variable<DateTime>(countedAt);
+    return map;
+  }
+
+  StockVerificationItemsCompanion toCompanion(bool nullToAbsent) {
+    return StockVerificationItemsCompanion(
+      id: Value(id),
+      verificationId: Value(verificationId),
+      productId: Value(productId),
+      expectedStock: Value(expectedStock),
+      physicalCount: Value(physicalCount),
+      variance: Value(variance),
+      countedAt: Value(countedAt),
+    );
+  }
+
+  factory StockVerificationItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockVerificationItem(
+      id: serializer.fromJson<int>(json['id']),
+      verificationId: serializer.fromJson<int>(json['verificationId']),
+      productId: serializer.fromJson<int>(json['productId']),
+      expectedStock: serializer.fromJson<int>(json['expectedStock']),
+      physicalCount: serializer.fromJson<int>(json['physicalCount']),
+      variance: serializer.fromJson<int>(json['variance']),
+      countedAt: serializer.fromJson<DateTime>(json['countedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'verificationId': serializer.toJson<int>(verificationId),
+      'productId': serializer.toJson<int>(productId),
+      'expectedStock': serializer.toJson<int>(expectedStock),
+      'physicalCount': serializer.toJson<int>(physicalCount),
+      'variance': serializer.toJson<int>(variance),
+      'countedAt': serializer.toJson<DateTime>(countedAt),
+    };
+  }
+
+  StockVerificationItem copyWith({
+    int? id,
+    int? verificationId,
+    int? productId,
+    int? expectedStock,
+    int? physicalCount,
+    int? variance,
+    DateTime? countedAt,
+  }) => StockVerificationItem(
+    id: id ?? this.id,
+    verificationId: verificationId ?? this.verificationId,
+    productId: productId ?? this.productId,
+    expectedStock: expectedStock ?? this.expectedStock,
+    physicalCount: physicalCount ?? this.physicalCount,
+    variance: variance ?? this.variance,
+    countedAt: countedAt ?? this.countedAt,
+  );
+  StockVerificationItem copyWithCompanion(
+    StockVerificationItemsCompanion data,
+  ) {
+    return StockVerificationItem(
+      id: data.id.present ? data.id.value : this.id,
+      verificationId: data.verificationId.present
+          ? data.verificationId.value
+          : this.verificationId,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      expectedStock: data.expectedStock.present
+          ? data.expectedStock.value
+          : this.expectedStock,
+      physicalCount: data.physicalCount.present
+          ? data.physicalCount.value
+          : this.physicalCount,
+      variance: data.variance.present ? data.variance.value : this.variance,
+      countedAt: data.countedAt.present ? data.countedAt.value : this.countedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockVerificationItem(')
+          ..write('id: $id, ')
+          ..write('verificationId: $verificationId, ')
+          ..write('productId: $productId, ')
+          ..write('expectedStock: $expectedStock, ')
+          ..write('physicalCount: $physicalCount, ')
+          ..write('variance: $variance, ')
+          ..write('countedAt: $countedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    verificationId,
+    productId,
+    expectedStock,
+    physicalCount,
+    variance,
+    countedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockVerificationItem &&
+          other.id == this.id &&
+          other.verificationId == this.verificationId &&
+          other.productId == this.productId &&
+          other.expectedStock == this.expectedStock &&
+          other.physicalCount == this.physicalCount &&
+          other.variance == this.variance &&
+          other.countedAt == this.countedAt);
+}
+
+class StockVerificationItemsCompanion
+    extends UpdateCompanion<StockVerificationItem> {
+  final Value<int> id;
+  final Value<int> verificationId;
+  final Value<int> productId;
+  final Value<int> expectedStock;
+  final Value<int> physicalCount;
+  final Value<int> variance;
+  final Value<DateTime> countedAt;
+  const StockVerificationItemsCompanion({
+    this.id = const Value.absent(),
+    this.verificationId = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.expectedStock = const Value.absent(),
+    this.physicalCount = const Value.absent(),
+    this.variance = const Value.absent(),
+    this.countedAt = const Value.absent(),
+  });
+  StockVerificationItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int verificationId,
+    required int productId,
+    required int expectedStock,
+    required int physicalCount,
+    required int variance,
+    this.countedAt = const Value.absent(),
+  }) : verificationId = Value(verificationId),
+       productId = Value(productId),
+       expectedStock = Value(expectedStock),
+       physicalCount = Value(physicalCount),
+       variance = Value(variance);
+  static Insertable<StockVerificationItem> custom({
+    Expression<int>? id,
+    Expression<int>? verificationId,
+    Expression<int>? productId,
+    Expression<int>? expectedStock,
+    Expression<int>? physicalCount,
+    Expression<int>? variance,
+    Expression<DateTime>? countedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (verificationId != null) 'verification_id': verificationId,
+      if (productId != null) 'product_id': productId,
+      if (expectedStock != null) 'expected_stock': expectedStock,
+      if (physicalCount != null) 'physical_count': physicalCount,
+      if (variance != null) 'variance': variance,
+      if (countedAt != null) 'counted_at': countedAt,
+    });
+  }
+
+  StockVerificationItemsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? verificationId,
+    Value<int>? productId,
+    Value<int>? expectedStock,
+    Value<int>? physicalCount,
+    Value<int>? variance,
+    Value<DateTime>? countedAt,
+  }) {
+    return StockVerificationItemsCompanion(
+      id: id ?? this.id,
+      verificationId: verificationId ?? this.verificationId,
+      productId: productId ?? this.productId,
+      expectedStock: expectedStock ?? this.expectedStock,
+      physicalCount: physicalCount ?? this.physicalCount,
+      variance: variance ?? this.variance,
+      countedAt: countedAt ?? this.countedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (verificationId.present) {
+      map['verification_id'] = Variable<int>(verificationId.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<int>(productId.value);
+    }
+    if (expectedStock.present) {
+      map['expected_stock'] = Variable<int>(expectedStock.value);
+    }
+    if (physicalCount.present) {
+      map['physical_count'] = Variable<int>(physicalCount.value);
+    }
+    if (variance.present) {
+      map['variance'] = Variable<int>(variance.value);
+    }
+    if (countedAt.present) {
+      map['counted_at'] = Variable<DateTime>(countedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockVerificationItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('verificationId: $verificationId, ')
+          ..write('productId: $productId, ')
+          ..write('expectedStock: $expectedStock, ')
+          ..write('physicalCount: $physicalCount, ')
+          ..write('variance: $variance, ')
+          ..write('countedAt: $countedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7970,6 +9053,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SaleEmailQueuesTable saleEmailQueues = $SaleEmailQueuesTable(
     this,
   );
+  late final $StockVerificationsTable stockVerifications =
+      $StockVerificationsTable(this);
+  late final $StockVerificationItemsTable stockVerificationItems =
+      $StockVerificationItemsTable(this);
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final ProductDao productDao = ProductDao(this as AppDatabase);
   late final StockMovementDao stockMovementDao = StockMovementDao(
@@ -8002,6 +9089,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final SaleEmailQueueDao saleEmailQueueDao = SaleEmailQueueDao(
     this as AppDatabase,
   );
+  late final StockVerificationDao stockVerificationDao = StockVerificationDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8023,6 +9113,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     supplierPayments,
     supplierPaymentAllocations,
     saleEmailQueues,
+    stockVerifications,
+    stockVerificationItems,
   ];
 }
 
@@ -8101,6 +9193,50 @@ final class $$UsersTableReferences
     ).filter((f) => f.staffId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_staffPurchasesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$StockVerificationsTable, List<StockVerification>>
+  _stockVerificationCountedByTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockVerifications,
+        aliasName: 'users__id__stock_verifications__counted_by_user_id',
+      );
+
+  $$StockVerificationsTableProcessedTableManager
+  get stockVerificationCountedBy {
+    final manager = $$StockVerificationsTableTableManager(
+      $_db,
+      $_db.stockVerifications,
+    ).filter((f) => f.countedByUserId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stockVerificationCountedByTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$StockVerificationsTable, List<StockVerification>>
+  _stockVerificationReviewedByTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockVerifications,
+        aliasName: 'users__id__stock_verifications__reviewed_by_user_id',
+      );
+
+  $$StockVerificationsTableProcessedTableManager
+  get stockVerificationReviewedBy {
+    final manager = $$StockVerificationsTableTableManager(
+      $_db,
+      $_db.stockVerifications,
+    ).filter((f) => f.reviewedByUserId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stockVerificationReviewedByTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -8216,6 +9352,56 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
           }) => $$StaffPurchasesTableFilterComposer(
             $db: $db,
             $table: $db.staffPurchases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> stockVerificationCountedBy(
+    Expression<bool> Function($$StockVerificationsTableFilterComposer f) f,
+  ) {
+    final $$StockVerificationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stockVerifications,
+      getReferencedColumn: (t) => t.countedByUserId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockVerificationsTableFilterComposer(
+            $db: $db,
+            $table: $db.stockVerifications,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> stockVerificationReviewedBy(
+    Expression<bool> Function($$StockVerificationsTableFilterComposer f) f,
+  ) {
+    final $$StockVerificationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stockVerifications,
+      getReferencedColumn: (t) => t.reviewedByUserId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockVerificationsTableFilterComposer(
+            $db: $db,
+            $table: $db.stockVerifications,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8375,6 +9561,58 @@ class $$UsersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> stockVerificationCountedBy<T extends Object>(
+    Expression<T> Function($$StockVerificationsTableAnnotationComposer a) f,
+  ) {
+    final $$StockVerificationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerifications,
+          getReferencedColumn: (t) => t.countedByUserId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockVerifications,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> stockVerificationReviewedBy<T extends Object>(
+    Expression<T> Function($$StockVerificationsTableAnnotationComposer a) f,
+  ) {
+    final $$StockVerificationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerifications,
+          getReferencedColumn: (t) => t.reviewedByUserId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockVerifications,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$UsersTableTableManager
@@ -8394,6 +9632,8 @@ class $$UsersTableTableManager
             bool salesRefs,
             bool userProfilesRefs,
             bool staffPurchasesRefs,
+            bool stockVerificationCountedBy,
+            bool stockVerificationReviewedBy,
           })
         > {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
@@ -8454,6 +9694,8 @@ class $$UsersTableTableManager
                 salesRefs = false,
                 userProfilesRefs = false,
                 staffPurchasesRefs = false,
+                stockVerificationCountedBy = false,
+                stockVerificationReviewedBy = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -8461,6 +9703,8 @@ class $$UsersTableTableManager
                     if (salesRefs) db.sales,
                     if (userProfilesRefs) db.userProfiles,
                     if (staffPurchasesRefs) db.staffPurchases,
+                    if (stockVerificationCountedBy) db.stockVerifications,
+                    if (stockVerificationReviewedBy) db.stockVerifications,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -8520,6 +9764,48 @@ class $$UsersTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (stockVerificationCountedBy)
+                        await $_getPrefetchedData<
+                          User,
+                          $UsersTable,
+                          StockVerification
+                        >(
+                          currentTable: table,
+                          referencedTable: $$UsersTableReferences
+                              ._stockVerificationCountedByTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockVerificationCountedBy,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.countedByUserId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (stockVerificationReviewedBy)
+                        await $_getPrefetchedData<
+                          User,
+                          $UsersTable,
+                          StockVerification
+                        >(
+                          currentTable: table,
+                          referencedTable: $$UsersTableReferences
+                              ._stockVerificationReviewedByTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockVerificationReviewedBy,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.reviewedByUserId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -8544,6 +9830,8 @@ typedef $$UsersTableProcessedTableManager =
         bool salesRefs,
         bool userProfilesRefs,
         bool staffPurchasesRefs,
+        bool stockVerificationCountedBy,
+        bool stockVerificationReviewedBy,
       })
     >;
 typedef $$CategoriesTableCreateCompanionBuilder =
@@ -8930,6 +10218,31 @@ final class $$ProductsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $StockVerificationItemsTable,
+    List<StockVerificationItem>
+  >
+  _stockVerificationItemsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockVerificationItems,
+        aliasName: 'products__id__stock_verification_items__product_id',
+      );
+
+  $$StockVerificationItemsTableProcessedTableManager
+  get stockVerificationItemsRefs {
+    final manager = $$StockVerificationItemsTableTableManager(
+      $_db,
+      $_db.stockVerificationItems,
+    ).filter((f) => f.productId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stockVerificationItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ProductsTableFilterComposer
@@ -9106,6 +10419,32 @@ class $$ProductsTableFilterComposer
               }) => $$SupplierDeliveryItemsTableFilterComposer(
                 $db: $db,
                 $table: $db.supplierDeliveryItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> stockVerificationItemsRefs(
+    Expression<bool> Function($$StockVerificationItemsTableFilterComposer f) f,
+  ) {
+    final $$StockVerificationItemsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerificationItems,
+          getReferencedColumn: (t) => t.productId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationItemsTableFilterComposer(
+                $db: $db,
+                $table: $db.stockVerificationItems,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -9365,6 +10704,32 @@ class $$ProductsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> stockVerificationItemsRefs<T extends Object>(
+    Expression<T> Function($$StockVerificationItemsTableAnnotationComposer a) f,
+  ) {
+    final $$StockVerificationItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerificationItems,
+          getReferencedColumn: (t) => t.productId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockVerificationItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ProductsTableTableManager
@@ -9386,6 +10751,7 @@ class $$ProductsTableTableManager
             bool salesRefs,
             bool staffPurchasesRefs,
             bool supplierDeliveryItemsRefs,
+            bool stockVerificationItemsRefs,
           })
         > {
   $$ProductsTableTableManager(_$AppDatabase db, $ProductsTable table)
@@ -9466,6 +10832,7 @@ class $$ProductsTableTableManager
                 salesRefs = false,
                 staffPurchasesRefs = false,
                 supplierDeliveryItemsRefs = false,
+                stockVerificationItemsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -9474,6 +10841,7 @@ class $$ProductsTableTableManager
                     if (salesRefs) db.sales,
                     if (staffPurchasesRefs) db.staffPurchases,
                     if (supplierDeliveryItemsRefs) db.supplierDeliveryItems,
+                    if (stockVerificationItemsRefs) db.stockVerificationItems,
                   ],
                   addJoins:
                       <
@@ -9593,6 +10961,27 @@ class $$ProductsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (stockVerificationItemsRefs)
+                        await $_getPrefetchedData<
+                          Product,
+                          $ProductsTable,
+                          StockVerificationItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProductsTableReferences
+                              ._stockVerificationItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProductsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockVerificationItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.productId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9619,6 +11008,7 @@ typedef $$ProductsTableProcessedTableManager =
         bool salesRefs,
         bool staffPurchasesRefs,
         bool supplierDeliveryItemsRefs,
+        bool stockVerificationItemsRefs,
       })
     >;
 typedef $$SuppliersTableCreateCompanionBuilder =
@@ -15597,6 +16987,1085 @@ typedef $$SaleEmailQueuesTableProcessedTableManager =
       SaleEmailQueue,
       PrefetchHooks Function()
     >;
+typedef $$StockVerificationsTableCreateCompanionBuilder =
+    StockVerificationsCompanion Function({
+      Value<int> id,
+      required DateTime businessDate,
+      required int countedByUserId,
+      Value<DateTime> startedAt,
+      Value<DateTime?> submittedAt,
+      Value<String> status,
+      Value<int?> reviewedByUserId,
+      Value<DateTime?> reviewedAt,
+      Value<String?> notes,
+    });
+typedef $$StockVerificationsTableUpdateCompanionBuilder =
+    StockVerificationsCompanion Function({
+      Value<int> id,
+      Value<DateTime> businessDate,
+      Value<int> countedByUserId,
+      Value<DateTime> startedAt,
+      Value<DateTime?> submittedAt,
+      Value<String> status,
+      Value<int?> reviewedByUserId,
+      Value<DateTime?> reviewedAt,
+      Value<String?> notes,
+    });
+
+final class $$StockVerificationsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StockVerificationsTable,
+          StockVerification
+        > {
+  $$StockVerificationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UsersTable _countedByUserIdTable(_$AppDatabase db) => db.users
+      .createAlias('stock_verifications__counted_by_user_id__users__id');
+
+  $$UsersTableProcessedTableManager get countedByUserId {
+    final $_column = $_itemColumn<int>('counted_by_user_id')!;
+
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_countedByUserIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $UsersTable _reviewedByUserIdTable(_$AppDatabase db) => db.users
+      .createAlias('stock_verifications__reviewed_by_user_id__users__id');
+
+  $$UsersTableProcessedTableManager? get reviewedByUserId {
+    final $_column = $_itemColumn<int>('reviewed_by_user_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_reviewedByUserIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StockVerificationItemsTable,
+    List<StockVerificationItem>
+  >
+  _stockVerificationItemsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.stockVerificationItems,
+    aliasName:
+        'stock_verifications__id__stock_verification_items__verification_id',
+  );
+
+  $$StockVerificationItemsTableProcessedTableManager
+  get stockVerificationItemsRefs {
+    final manager = $$StockVerificationItemsTableTableManager(
+      $_db,
+      $_db.stockVerificationItems,
+    ).filter((f) => f.verificationId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stockVerificationItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$StockVerificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $StockVerificationsTable> {
+  $$StockVerificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get businessDate => $composableBuilder(
+    column: $table.businessDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get submittedAt => $composableBuilder(
+    column: $table.submittedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UsersTableFilterComposer get countedByUserId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.countedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get reviewedByUserId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.reviewedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> stockVerificationItemsRefs(
+    Expression<bool> Function($$StockVerificationItemsTableFilterComposer f) f,
+  ) {
+    final $$StockVerificationItemsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerificationItems,
+          getReferencedColumn: (t) => t.verificationId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationItemsTableFilterComposer(
+                $db: $db,
+                $table: $db.stockVerificationItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$StockVerificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StockVerificationsTable> {
+  $$StockVerificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get businessDate => $composableBuilder(
+    column: $table.businessDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get submittedAt => $composableBuilder(
+    column: $table.submittedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UsersTableOrderingComposer get countedByUserId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.countedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get reviewedByUserId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.reviewedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StockVerificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StockVerificationsTable> {
+  $$StockVerificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get businessDate => $composableBuilder(
+    column: $table.businessDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get submittedAt => $composableBuilder(
+    column: $table.submittedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get countedByUserId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.countedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get reviewedByUserId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.reviewedByUserId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> stockVerificationItemsRefs<T extends Object>(
+    Expression<T> Function($$StockVerificationItemsTableAnnotationComposer a) f,
+  ) {
+    final $$StockVerificationItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockVerificationItems,
+          getReferencedColumn: (t) => t.verificationId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockVerificationItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$StockVerificationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StockVerificationsTable,
+          StockVerification,
+          $$StockVerificationsTableFilterComposer,
+          $$StockVerificationsTableOrderingComposer,
+          $$StockVerificationsTableAnnotationComposer,
+          $$StockVerificationsTableCreateCompanionBuilder,
+          $$StockVerificationsTableUpdateCompanionBuilder,
+          (StockVerification, $$StockVerificationsTableReferences),
+          StockVerification,
+          PrefetchHooks Function({
+            bool countedByUserId,
+            bool reviewedByUserId,
+            bool stockVerificationItemsRefs,
+          })
+        > {
+  $$StockVerificationsTableTableManager(
+    _$AppDatabase db,
+    $StockVerificationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StockVerificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StockVerificationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StockVerificationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> businessDate = const Value.absent(),
+                Value<int> countedByUserId = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> submittedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> reviewedByUserId = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => StockVerificationsCompanion(
+                id: id,
+                businessDate: businessDate,
+                countedByUserId: countedByUserId,
+                startedAt: startedAt,
+                submittedAt: submittedAt,
+                status: status,
+                reviewedByUserId: reviewedByUserId,
+                reviewedAt: reviewedAt,
+                notes: notes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime businessDate,
+                required int countedByUserId,
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> submittedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> reviewedByUserId = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => StockVerificationsCompanion.insert(
+                id: id,
+                businessDate: businessDate,
+                countedByUserId: countedByUserId,
+                startedAt: startedAt,
+                submittedAt: submittedAt,
+                status: status,
+                reviewedByUserId: reviewedByUserId,
+                reviewedAt: reviewedAt,
+                notes: notes,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StockVerificationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                countedByUserId = false,
+                reviewedByUserId = false,
+                stockVerificationItemsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (stockVerificationItemsRefs) db.stockVerificationItems,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (countedByUserId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.countedByUserId,
+                                    referencedTable:
+                                        $$StockVerificationsTableReferences
+                                            ._countedByUserIdTable(db),
+                                    referencedColumn:
+                                        $$StockVerificationsTableReferences
+                                            ._countedByUserIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (reviewedByUserId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.reviewedByUserId,
+                                    referencedTable:
+                                        $$StockVerificationsTableReferences
+                                            ._reviewedByUserIdTable(db),
+                                    referencedColumn:
+                                        $$StockVerificationsTableReferences
+                                            ._reviewedByUserIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (stockVerificationItemsRefs)
+                        await $_getPrefetchedData<
+                          StockVerification,
+                          $StockVerificationsTable,
+                          StockVerificationItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StockVerificationsTableReferences
+                              ._stockVerificationItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StockVerificationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockVerificationItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.verificationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$StockVerificationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StockVerificationsTable,
+      StockVerification,
+      $$StockVerificationsTableFilterComposer,
+      $$StockVerificationsTableOrderingComposer,
+      $$StockVerificationsTableAnnotationComposer,
+      $$StockVerificationsTableCreateCompanionBuilder,
+      $$StockVerificationsTableUpdateCompanionBuilder,
+      (StockVerification, $$StockVerificationsTableReferences),
+      StockVerification,
+      PrefetchHooks Function({
+        bool countedByUserId,
+        bool reviewedByUserId,
+        bool stockVerificationItemsRefs,
+      })
+    >;
+typedef $$StockVerificationItemsTableCreateCompanionBuilder =
+    StockVerificationItemsCompanion Function({
+      Value<int> id,
+      required int verificationId,
+      required int productId,
+      required int expectedStock,
+      required int physicalCount,
+      required int variance,
+      Value<DateTime> countedAt,
+    });
+typedef $$StockVerificationItemsTableUpdateCompanionBuilder =
+    StockVerificationItemsCompanion Function({
+      Value<int> id,
+      Value<int> verificationId,
+      Value<int> productId,
+      Value<int> expectedStock,
+      Value<int> physicalCount,
+      Value<int> variance,
+      Value<DateTime> countedAt,
+    });
+
+final class $$StockVerificationItemsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StockVerificationItemsTable,
+          StockVerificationItem
+        > {
+  $$StockVerificationItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StockVerificationsTable _verificationIdTable(_$AppDatabase db) =>
+      db.stockVerifications.createAlias(
+        'stock_verification_items__verification_id__stock_verifications__id',
+      );
+
+  $$StockVerificationsTableProcessedTableManager get verificationId {
+    final $_column = $_itemColumn<int>('verification_id')!;
+
+    final manager = $$StockVerificationsTableTableManager(
+      $_db,
+      $_db.stockVerifications,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_verificationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ProductsTable _productIdTable(_$AppDatabase db) => db.products
+      .createAlias('stock_verification_items__product_id__products__id');
+
+  $$ProductsTableProcessedTableManager get productId {
+    final $_column = $_itemColumn<int>('product_id')!;
+
+    final manager = $$ProductsTableTableManager(
+      $_db,
+      $_db.products,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_productIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StockVerificationItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $StockVerificationItemsTable> {
+  $$StockVerificationItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedStock => $composableBuilder(
+    column: $table.expectedStock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get physicalCount => $composableBuilder(
+    column: $table.physicalCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get variance => $composableBuilder(
+    column: $table.variance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get countedAt => $composableBuilder(
+    column: $table.countedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StockVerificationsTableFilterComposer get verificationId {
+    final $$StockVerificationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.verificationId,
+      referencedTable: $db.stockVerifications,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockVerificationsTableFilterComposer(
+            $db: $db,
+            $table: $db.stockVerifications,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ProductsTableFilterComposer get productId {
+    final $$ProductsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productId,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableFilterComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StockVerificationItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StockVerificationItemsTable> {
+  $$StockVerificationItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedStock => $composableBuilder(
+    column: $table.expectedStock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get physicalCount => $composableBuilder(
+    column: $table.physicalCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get variance => $composableBuilder(
+    column: $table.variance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get countedAt => $composableBuilder(
+    column: $table.countedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StockVerificationsTableOrderingComposer get verificationId {
+    final $$StockVerificationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.verificationId,
+      referencedTable: $db.stockVerifications,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockVerificationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.stockVerifications,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ProductsTableOrderingComposer get productId {
+    final $$ProductsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productId,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableOrderingComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StockVerificationItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StockVerificationItemsTable> {
+  $$StockVerificationItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get expectedStock => $composableBuilder(
+    column: $table.expectedStock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get physicalCount => $composableBuilder(
+    column: $table.physicalCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get variance =>
+      $composableBuilder(column: $table.variance, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get countedAt =>
+      $composableBuilder(column: $table.countedAt, builder: (column) => column);
+
+  $$StockVerificationsTableAnnotationComposer get verificationId {
+    final $$StockVerificationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.verificationId,
+          referencedTable: $db.stockVerifications,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockVerificationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockVerifications,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$ProductsTableAnnotationComposer get productId {
+    final $$ProductsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.productId,
+      referencedTable: $db.products,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProductsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.products,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StockVerificationItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StockVerificationItemsTable,
+          StockVerificationItem,
+          $$StockVerificationItemsTableFilterComposer,
+          $$StockVerificationItemsTableOrderingComposer,
+          $$StockVerificationItemsTableAnnotationComposer,
+          $$StockVerificationItemsTableCreateCompanionBuilder,
+          $$StockVerificationItemsTableUpdateCompanionBuilder,
+          (StockVerificationItem, $$StockVerificationItemsTableReferences),
+          StockVerificationItem,
+          PrefetchHooks Function({bool verificationId, bool productId})
+        > {
+  $$StockVerificationItemsTableTableManager(
+    _$AppDatabase db,
+    $StockVerificationItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StockVerificationItemsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$StockVerificationItemsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$StockVerificationItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> verificationId = const Value.absent(),
+                Value<int> productId = const Value.absent(),
+                Value<int> expectedStock = const Value.absent(),
+                Value<int> physicalCount = const Value.absent(),
+                Value<int> variance = const Value.absent(),
+                Value<DateTime> countedAt = const Value.absent(),
+              }) => StockVerificationItemsCompanion(
+                id: id,
+                verificationId: verificationId,
+                productId: productId,
+                expectedStock: expectedStock,
+                physicalCount: physicalCount,
+                variance: variance,
+                countedAt: countedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int verificationId,
+                required int productId,
+                required int expectedStock,
+                required int physicalCount,
+                required int variance,
+                Value<DateTime> countedAt = const Value.absent(),
+              }) => StockVerificationItemsCompanion.insert(
+                id: id,
+                verificationId: verificationId,
+                productId: productId,
+                expectedStock: expectedStock,
+                physicalCount: physicalCount,
+                variance: variance,
+                countedAt: countedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StockVerificationItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({verificationId = false, productId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (verificationId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.verificationId,
+                                referencedTable:
+                                    $$StockVerificationItemsTableReferences
+                                        ._verificationIdTable(db),
+                                referencedColumn:
+                                    $$StockVerificationItemsTableReferences
+                                        ._verificationIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (productId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.productId,
+                                referencedTable:
+                                    $$StockVerificationItemsTableReferences
+                                        ._productIdTable(db),
+                                referencedColumn:
+                                    $$StockVerificationItemsTableReferences
+                                        ._productIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StockVerificationItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StockVerificationItemsTable,
+      StockVerificationItem,
+      $$StockVerificationItemsTableFilterComposer,
+      $$StockVerificationItemsTableOrderingComposer,
+      $$StockVerificationItemsTableAnnotationComposer,
+      $$StockVerificationItemsTableCreateCompanionBuilder,
+      $$StockVerificationItemsTableUpdateCompanionBuilder,
+      (StockVerificationItem, $$StockVerificationItemsTableReferences),
+      StockVerificationItem,
+      PrefetchHooks Function({bool verificationId, bool productId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15637,4 +18106,11 @@ class $AppDatabaseManager {
       );
   $$SaleEmailQueuesTableTableManager get saleEmailQueues =>
       $$SaleEmailQueuesTableTableManager(_db, _db.saleEmailQueues);
+  $$StockVerificationsTableTableManager get stockVerifications =>
+      $$StockVerificationsTableTableManager(_db, _db.stockVerifications);
+  $$StockVerificationItemsTableTableManager get stockVerificationItems =>
+      $$StockVerificationItemsTableTableManager(
+        _db,
+        _db.stockVerificationItems,
+      );
 }

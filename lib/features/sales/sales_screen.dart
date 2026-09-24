@@ -1645,7 +1645,11 @@ class _SalesScreenState extends State<SalesScreen> {
 
         final barcode = product.barcode?.toLowerCase() ?? '';
 
-        return name.contains(search) || barcode.contains(search);
+        final brand = product.brand?.toLowerCase() ?? '';
+
+        return name.contains(search) ||
+            barcode.contains(search) ||
+            brand.contains(search);
       }).toList();
     }
 

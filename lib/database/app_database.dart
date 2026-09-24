@@ -50,6 +50,9 @@ import 'daos/staff_debt_payment_dao.dart';
 
 import 'tables/sale_email_queue_table.dart';
 import 'daos/sale_email_queue_dao.dart';
+import 'daos/stock_verification_dao.dart';
+
+import 'tables/stock_verification_table.dart';
 
 import 'default_settings.dart';
 
@@ -248,6 +251,8 @@ SaleEmailQueueDao getSaleEmailQueueDao() {
     SupplierPayments,
     SupplierPaymentAllocations,
     SaleEmailQueues,
+    StockVerifications,
+    StockVerificationItems,
   ],
 
   daos: [
@@ -267,13 +272,14 @@ SaleEmailQueueDao getSaleEmailQueueDao() {
     SupplierPaymentDao,
     SupplierPaymentAllocationDao,
     SaleEmailQueueDao,
+    StockVerificationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 25; // bump version when schema changes
+  int get schemaVersion => 26; // bump version when schema changes
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -405,6 +411,17 @@ class AppDatabase extends _$AppDatabase {
 
       if (from <= 24) {
         await m.createTable(saleEmailQueues);
+      }
+
+      // SCHEMA 25 → 26
+      // SYSTEM STOCK VERIFICATION / CLOSING
+
+      if (from <= 25) {
+        // Parent verification record must exist before its items.
+        await m.createTable(stockVerifications);
+
+        // Individual product counts reference stockVerifications.
+        await m.createTable(stockVerificationItems);
       }
 
       // if you add more versions later, handle them here

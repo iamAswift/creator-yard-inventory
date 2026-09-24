@@ -73,8 +73,11 @@ class _ProductGridScreenState extends State<ProductGridScreen> {
     return widget.products.where((product) {
       final name = product.name.toString().toLowerCase();
       final barcode = product.barcode?.toString().toLowerCase() ?? '';
+      final brand = product.brand?.toString().toLowerCase() ?? '';
 
-      return name.contains(_searchQuery) || barcode.contains(_searchQuery);
+      return name.contains(_searchQuery) ||
+          barcode.contains(_searchQuery) ||
+          brand.contains(_searchQuery);
     }).toList();
   }
 

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/licensing/license_state.dart';
+import '../../core/constants/creator_yard_support.dart';
 import '../../core/theme/styles.dart';
 
 class LicenseAccessScreen extends StatelessWidget {
@@ -97,6 +98,43 @@ class LicenseAccessScreen extends StatelessWidget {
                         'Contact Creator Yard support to activate this installation.',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.bodySecondary,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Creator Yard Support',
+                              style: AppTextStyles.body,
+                            ),
+                            SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Phone: ${CreatorYardSupport.phone}',
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                            Text(
+                              'WhatsApp: ${CreatorYardSupport.whatsapp}',
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                            Text(
+                              'Email: ${CreatorYardSupport.email}',
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                            Text(
+                              'Website: ${CreatorYardSupport.website}',
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
