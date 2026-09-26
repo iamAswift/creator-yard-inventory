@@ -1,10 +1,16 @@
 // lib/features/reports/low_stock_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/product_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../shared/pdf_report.dart';
 
 class LowStockReportScreen extends StatefulWidget {
@@ -16,10 +22,12 @@ class LowStockReportScreen extends StatefulWidget {
 
 class _LowStockReportScreenState extends State<LowStockReportScreen> {
   late final ProductDao productDao;
+  late final SettingsDao settingsDao;
 
   List<Product> _products = [];
 
   bool _isLoading = true;
+  bool _isEmailing = false;
   String? _error;
 
   @override
@@ -28,6 +36,7 @@ class _LowStockReportScreenState extends State<LowStockReportScreen> {
 
     final db = getDatabase();
     productDao = ProductDao(db);
+    settingsDao = SettingsDao(db);
 
     _loadReport();
   }
@@ -539,6 +548,11 @@ class _LowStockReportScreenState extends State<LowStockReportScreen> {
                   width: double.infinity,
                   child: _buildExportButton(context, products),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: _emailButton(),
+                ),
               ],
             );
           }
@@ -548,6 +562,8 @@ class _LowStockReportScreenState extends State<LowStockReportScreen> {
               Expanded(child: _buildExportContent()),
               const SizedBox(width: 20),
               _buildExportButton(context, products),
+              const SizedBox(width: 12),
+              _emailButton(),
             ],
           );
         },
@@ -595,6 +611,26 @@ class _LowStockReportScreenState extends State<LowStockReportScreen> {
   // EXPORT BUTTON
   // ============================================================
 
+  Widget _emailButton() {
+    return OutlinedButton.icon(
+      onPressed: _isEmailing ? null : _emailLowStockReport,
+      icon: _isEmailing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.email_outlined),
+      label: Text(
+        _isEmailing ? 'Emailing...' : 'Email PDF — 5 credits',
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Widget _buildExportButton(BuildContext context, List<Product> products) {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
@@ -616,6 +652,137 @@ class _LowStockReportScreenState extends State<LowStockReportScreen> {
   // ============================================================
   // PDF EXPORT
   // ============================================================
+
+  Future<void> _emailLowStockReport() async {
+    final recipientController = TextEditingController();
+
+    try {
+      final businessEmail =
+          await BusinessIdentity.getBusinessEmail(settingsDao);
+
+      recipientController.text = businessEmail.trim();
+
+      if (!mounted) return;
+
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Email Low Stock Report'),
+            content: TextField(
+              controller: recipientController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(
+                    recipientController.text.trim(),
+                  );
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      setState(() {
+        _isEmailing = true;
+      });
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Low Stock Report',
+        sections: [
+          {
+            'title': 'Low Stock Products',
+            'headers': ['Product', 'Stock'],
+            'rows': _products
+                .map((product) => [product.name, '${product.stock}'])
+                .toList(),
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName =
+          businessName.trim().isNotEmpty
+              ? businessName.trim()
+              : 'Creator Yard';
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Low Stock Report',
+        body:
+            'Attached is the Low Stock Report PDF for '
+            '$normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'low-stock-report.pdf',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Low Stock Report emailed successfully.'),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          action: e.retryable
+              ? SnackBarAction(
+                  label: 'Retry',
+                  onPressed: _emailLowStockReport,
+                )
+              : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to email Low Stock Report: $e'),
+        ),
+      );
+    } finally {
+      recipientController.dispose();
+
+      if (mounted) {
+        setState(() {
+          _isEmailing = false;
+        });
+      }
+    }
+  }
 
   Future<void> _exportPdf(BuildContext context, List<Product> products) async {
     try {
