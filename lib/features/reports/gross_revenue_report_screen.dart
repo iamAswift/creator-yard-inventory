@@ -1,11 +1,17 @@
 // lib/features/reports/gross_revenue_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
 import '../../core/responsive/responsive.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/sales_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../shared/pdf_report.dart';
 
 class GrossRevenueReportScreen extends StatefulWidget {
@@ -19,10 +25,12 @@ class GrossRevenueReportScreen extends StatefulWidget {
 class _GrossRevenueReportScreenState
     extends State<GrossRevenueReportScreen> {
   late final SalesDao salesDao;
+  late final SettingsDao settingsDao;
 
   double _grossRevenue = 0.0;
 
   bool _isLoading = true;
+  bool _isEmailing = false;
 
   String? _error;
 
@@ -47,6 +55,7 @@ class _GrossRevenueReportScreenState
     final db = getDatabase();
 
     salesDao = SalesDao(db);
+    settingsDao = SettingsDao(db);
 
     _loadReport();
   }
@@ -1125,6 +1134,12 @@ class _GrossRevenueReportScreenState
                 ),
 
                 _exportButton(),
+
+                const SizedBox(
+                  height: AppSpacing.md,
+                ),
+
+                _emailButton(),
               ],
             )
           : Row(
@@ -1137,7 +1152,18 @@ class _GrossRevenueReportScreenState
                   width: AppSpacing.xl,
                 ),
 
-                _exportButton(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _exportButton(),
+
+                    const SizedBox(
+                      width: AppSpacing.md,
+                    ),
+
+                    _emailButton(),
+                  ],
+                ),
               ],
             ),
     );
@@ -1190,6 +1216,159 @@ class _GrossRevenueReportScreenState
         ),
       ],
     );
+  }
+
+  Widget _emailButton() {
+    return OutlinedButton.icon(
+      onPressed: _isEmailing ? null : _emailGrossRevenueReport,
+      icon: _isEmailing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.email_outlined),
+      label: Text(
+        _isEmailing ? 'Emailing...' : 'Email PDF — 5 credits',
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _emailGrossRevenueReport() async {
+    final recipientController = TextEditingController();
+
+    try {
+      final businessEmail =
+          await BusinessIdentity.getBusinessEmail(settingsDao);
+
+      recipientController.text = businessEmail.trim();
+
+      if (!mounted) return;
+
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Email Gross Revenue Report'),
+            content: TextField(
+              controller: recipientController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(
+                    recipientController.text.trim(),
+                  );
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      setState(() {
+        _isEmailing = true;
+      });
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Gross Revenue Report',
+        sections: [
+          {
+            'title': 'Gross Revenue Summary',
+            'headers': ['Metric', 'Value'],
+            'rows': [
+              ['Period', _periodLabel()],
+              ['Date Range', _formatDateRange(_getDateRange())],
+              ['Gross Revenue', _formatCurrency(_grossRevenue)],
+            ],
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName =
+          businessName.trim().isNotEmpty
+              ? businessName.trim()
+              : 'Creator Yard';
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Gross Revenue Report',
+        body:
+            'Attached is the Gross Revenue Report PDF for '
+            '$normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'gross-revenue-report.pdf',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gross Revenue Report emailed successfully.'),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          action: e.retryable
+              ? SnackBarAction(
+                  label: 'Retry',
+                  onPressed: _emailGrossRevenueReport,
+                )
+              : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to email Gross Revenue Report: $e'),
+        ),
+      );
+    } finally {
+      recipientController.dispose();
+
+      if (mounted) {
+        setState(() {
+          _isEmailing = false;
+        });
+      }
+    }
   }
 
   Widget _exportButton() {
