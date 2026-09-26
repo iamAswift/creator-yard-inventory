@@ -1,12 +1,34 @@
 // lib/features/reports/expiry_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
+import '../../database/daos/settings_dao.dart';
 
-class ExpiryReportScreen extends StatelessWidget {
+import '../../shared/pdf_report.dart';
+
+class ExpiryReportScreen extends StatefulWidget {
   const ExpiryReportScreen({super.key});
+
+  @override
+  State<ExpiryReportScreen> createState() => _ExpiryReportScreenState();
+}
+
+class _ExpiryReportScreenState extends State<ExpiryReportScreen> {
+  late final SettingsDao settingsDao;
+  bool _isEmailing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    settingsDao = SettingsDao(getDatabase());
+  }
 
   // ============================================================
   // FETCH EXPIRY DATA
@@ -361,6 +383,47 @@ class ExpiryReportScreen extends StatelessWidget {
       ],
     );
 
+    final emailButton = OutlinedButton.icon(
+      onPressed: _isEmailing
+          ? null
+          : () async {
+              await _emailExpiryReport();
+            },
+      icon: _isEmailing
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.email_outlined, size: 18),
+      label: Text(
+        _isEmailing ? 'Emailing...' : 'Email PDF — 5 credits',
+      ),
+    );
+
+    if (isCompact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              icon,
+              const SizedBox(width: 14),
+              Expanded(
+                child: content,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: emailButton,
+          ),
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -369,8 +432,174 @@ class ExpiryReportScreen extends StatelessWidget {
         Expanded(
           child: content,
         ),
+        const SizedBox(width: 16),
+        emailButton,
       ],
     );
+  }
+
+  // ============================================================
+  // EMAIL EXPIRY REPORT
+  // ============================================================
+
+  Future<void> _emailExpiryReport() async {
+    final recipientController = TextEditingController();
+
+    try {
+      final businessEmail =
+          await BusinessIdentity.getBusinessEmail(settingsDao);
+
+      recipientController.text = businessEmail.trim();
+
+      if (!mounted) return;
+
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Email Expiry Report'),
+            content: TextField(
+              controller: recipientController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(
+                    recipientController.text.trim(),
+                  );
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      setState(() {
+        _isEmailing = true;
+      });
+
+      final data = await _fetchExpiryData();
+      final expiring = data['expiring'] ?? <Product>[];
+      final expired = data['expired'] ?? <Product>[];
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Expiry Report',
+        sections: [
+          {
+            'title': 'Summary',
+            'headers': ['Metric', 'Value'],
+            'rows': [
+              ['Expiring Soon', expiring.length],
+              ['Expired', expired.length],
+              ['Total At Risk', expiring.length + expired.length],
+            ],
+          },
+          {
+            'title': 'Expiring Soon',
+            'headers': ['Product', 'Expiry Date', 'Status'],
+            'rows': [
+              for (final product in expiring)
+                [
+                  product.name,
+                  _formatDate(product.expiryDate),
+                  'Expiring Soon',
+                ],
+            ],
+          },
+          {
+            'title': 'Expired Products',
+            'headers': ['Product', 'Expiry Date', 'Status'],
+            'rows': [
+              for (final product in expired)
+                [
+                  product.name,
+                  _formatDate(product.expiryDate),
+                  'Expired',
+                ],
+            ],
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName =
+          businessName.trim().isNotEmpty
+              ? businessName.trim()
+              : 'Creator Yard';
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        pdfBase64: pdfBase64,
+        filename: 'expiry-report.pdf',
+        subject: '$normalizedBusinessName - Expiry Report',
+        body:
+            'Attached is the Expiry Report PDF for $normalizedBusinessName.',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Expiry Report emailed successfully.'),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          action: e.retryable
+              ? SnackBarAction(
+                  label: 'Retry',
+                  onPressed: _emailExpiryReport,
+                )
+              : null,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to email Expiry Report: $e'),
+        ),
+      );
+    } finally {
+      recipientController.dispose();
+
+      if (mounted) {
+        setState(() {
+          _isEmailing = false;
+        });
+      }
+    }
   }
 
   // ============================================================
