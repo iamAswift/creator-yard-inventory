@@ -1,15 +1,35 @@
 // lib/features/reports/profit_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
 import '../../core/responsive/responsive.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/sales_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../shared/pdf_report.dart';
 
-class ProfitReportScreen extends StatelessWidget {
+class ProfitReportScreen extends StatefulWidget {
   const ProfitReportScreen({super.key});
+
+  @override
+  State<ProfitReportScreen> createState() => _ProfitReportScreenState();
+}
+
+class _ProfitReportScreenState extends State<ProfitReportScreen> {
+  late final SettingsDao settingsDao;
+  bool _isEmailing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    settingsDao = SettingsDao(getDatabase());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -572,6 +592,13 @@ class ProfitReportScreen extends StatelessWidget {
                   width: double.infinity,
                   child: _buildExportButton(context, totalProfit, status),
                 ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: _buildEmailButton(context, totalProfit, status),
+                ),
               ],
             );
           }
@@ -584,6 +611,10 @@ class ProfitReportScreen extends StatelessWidget {
               const SizedBox(width: AppSpacing.xl),
 
               _buildExportButton(context, totalProfit, status),
+
+              const SizedBox(width: AppSpacing.md),
+
+              _buildEmailButton(context, totalProfit, status),
             ],
           );
         },
@@ -664,6 +695,46 @@ class ProfitReportScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildEmailButton(
+    BuildContext context,
+    double totalProfit,
+    _ProfitStatus status,
+  ) {
+    return SizedBox(
+      height: AppSizes.buttonHeight,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Colors.white),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+        icon: _isEmailing
+            ? const SizedBox(
+                width: AppSpacing.xl,
+                height: AppSpacing.xl,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.email_outlined, size: AppSpacing.xl),
+        label: const Text(
+          'Email PDF — 5 credits',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onPressed: _isEmailing
+            ? null
+            : () => _emailProfitReport(context, totalProfit, status),
+      ),
+    );
+  }
+
   // ============================================================
   // PDF EXPORT
   // ============================================================
@@ -718,6 +789,163 @@ class ProfitReportScreen extends StatelessWidget {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _emailProfitReport(
+    BuildContext context,
+    double totalProfit,
+    _ProfitStatus status,
+  ) async {
+    final defaultEmail =
+        await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final controller = TextEditingController(text: defaultEmail);
+
+    try {
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Email Profit Report'),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (value.isNotEmpty) {
+                    Navigator.of(dialogContext).pop(value);
+                  }
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isEmailing = true);
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Profit Report',
+        sections: [
+          {
+            'title': 'Profit Summary',
+            'headers': ['Metric', 'Value'],
+            'rows': [
+              ['Total Profit', _formatCurrency(totalProfit)],
+              ['Profit Status', status.label],
+              ['Calculation', 'Based on recorded sales'],
+            ],
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(settingsDao);
+      final businessName =
+          await BusinessIdentity.getBusinessName(settingsDao);
+
+      final normalizedBusinessName =
+          businessName.trim().isEmpty ? 'Creator Yard' : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject: '$normalizedBusinessName - Profit Report',
+        body:
+            'Attached is the Profit Report PDF for $normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'profit-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Profit Report emailed successfully.',
+            style: TextStyle(fontFamily: 'Poppins', color: Colors.white),
+          ),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            e.retryable
+                ? 'Email could not be sent. Please try again.'
+                : e.message,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            'Unable to email report: $e',
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+
+      if (mounted) {
+        setState(() => _isEmailing = false);
+      }
     }
   }
 
