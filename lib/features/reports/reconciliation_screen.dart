@@ -1,9 +1,16 @@
 // lib/features/reports/reconciliation_screen.dart
+import 'dart:convert';
+
 
 import 'package:flutter/material.dart';
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 
 import '../../core/theme/styles.dart';
+import '../../database/app_database.dart';
 import '../../database/daos/product_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../models/reconciliation_row.dart';
 import '../../shared/pdf_report.dart';
 
@@ -25,10 +32,14 @@ class ReconciliationScreen extends StatefulWidget {
 class _ReconciliationScreenState
     extends State<ReconciliationScreen> {
   late DateTime _selectedDate;
+  late final SettingsDao settingsDao;
+  bool _isEmailing = false;
 
   @override
   void initState() {
     super.initState();
+
+    settingsDao = SettingsDao(getDatabase());
 
     _selectedDate = DateTime(
       widget.date.year,
@@ -301,6 +312,12 @@ class _ReconciliationScreenState
                       rows: rows,
                       selectedDate: _selectedDate,
                       discrepancyCount: discrepancyCount,
+                      isEmailing: _isEmailing,
+                      onEmail: () => _emailReport(
+                        context,
+                        rows,
+                        _selectedDate,
+                      ),
                     ),
 
                     const SizedBox(height: 24),
@@ -312,6 +329,168 @@ class _ReconciliationScreenState
         },
       ),
     );
+  }
+  Future<void> _emailReport(
+    BuildContext context,
+    List<ReconciliationRow> rows,
+    DateTime selectedDate,
+  ) async {
+    final defaultEmail =
+        await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final controller = TextEditingController(
+      text: defaultEmail,
+    );
+
+    try {
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(
+              'Email Reconciliation Report',
+            ),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (value.isNotEmpty) {
+                    Navigator.of(dialogContext).pop(value);
+                  }
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isEmailing = true);
+
+      final pdfFile =
+          await PdfReport.generateReconciliationReport(
+        rows,
+        selectedDate,
+      );
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(
+        settingsDao,
+      );
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(
+        settingsDao,
+      );
+
+      final normalizedBusinessName =
+          businessName.trim().isEmpty
+              ? 'Creator Yard'
+              : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject:
+            '$normalizedBusinessName - Daily Reconciliation Report',
+        body:
+            'Attached is the Daily Reconciliation Report PDF for $normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'daily-reconciliation-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Daily Reconciliation Report emailed successfully.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } on EmailServiceException catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            e.retryable
+                ? 'Email could not be sent. Please try again.'
+                : e.message,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(
+            'Unable to email report: $e',
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+
+      if (mounted) {
+        setState(() => _isEmailing = false);
+      }
+    }
   }
 }
 
@@ -622,11 +801,15 @@ class _ReportCard extends StatelessWidget {
   final List<ReconciliationRow> rows;
   final DateTime selectedDate;
   final int discrepancyCount;
+  final bool isEmailing;
+  final VoidCallback onEmail;
 
   const _ReportCard({
     required this.rows,
     required this.selectedDate,
     required this.discrepancyCount,
+    required this.isEmailing,
+    required this.onEmail,
   });
 
   @override
@@ -891,6 +1074,38 @@ class _ReportCard extends StatelessWidget {
             ),
           );
 
+          final emailButton = OutlinedButton.icon(
+            onPressed: isEmailing ? null : onEmail,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(
+                color: AppColors.primary,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 13,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: isEmailing
+                ? const SizedBox(
+                    width: 19,
+                    height: 19,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(
+                    Icons.email_outlined,
+                    size: 19,
+                  ),
+            label: const Text(
+              'Email PDF — 5 credits',
+            ),
+          );
+
           if (compact) {
             return Column(
               crossAxisAlignment:
@@ -899,6 +1114,8 @@ class _ReportCard extends StatelessWidget {
                 dateText,
                 const SizedBox(height: 12),
                 button,
+                const SizedBox(height: 12),
+                emailButton,
               ],
             );
           }
@@ -909,6 +1126,8 @@ class _ReportCard extends StatelessWidget {
                 child: dateText,
               ),
               button,
+              const SizedBox(width: 12),
+              emailButton,
             ],
           );
         },
