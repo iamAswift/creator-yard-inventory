@@ -1,10 +1,16 @@
 // lib/features/reports/salary_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart' as d;
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
+import '../../database/daos/settings_dao.dart';
 
 import '../../shared/pdf_report.dart';
 
@@ -1113,7 +1119,7 @@ class _AmountColumn extends StatelessWidget {
 // EXPORT CARD
 // ============================================================================
 
-class _ExportCard extends StatelessWidget {
+class _ExportCard extends StatefulWidget {
   final List<Map<String, dynamic>> report;
   final double totalSalary;
   final double totalDebt;
@@ -1123,6 +1129,13 @@ class _ExportCard extends StatelessWidget {
     required this.totalSalary,
     required this.totalDebt,
   });
+
+  @override
+  State<_ExportCard> createState() => _ExportCardState();
+}
+
+class _ExportCardState extends State<_ExportCard> {
+  bool _isEmailing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1175,25 +1188,58 @@ class _ExportCard extends StatelessWidget {
               ],
             );
 
-            final button = FilledButton.icon(
-              onPressed: () {
-                _exportReport(
-                  context,
-                  report,
-                  totalSalary,
-                  totalDebt,
-                );
-              },
-              icon: const Icon(
-                Icons.picture_as_pdf_outlined,
-              ),
-              label: const Text(
-                'Export PDF',
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.onPrimary,
-                foregroundColor: AppColors.primary,
-              ),
+            final button = Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: () {
+                    _exportReport(
+                      context,
+                      widget.report,
+                      widget.totalSalary,
+                      widget.totalDebt,
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.picture_as_pdf_outlined,
+                  ),
+                  label: const Text(
+                    'Export PDF',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.onPrimary,
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: _isEmailing
+                      ? null
+                      : () {
+                          _emailReport(
+                            context,
+                            widget.report,
+                            widget.totalSalary,
+                            widget.totalDebt,
+                          );
+                        },
+                  icon: _isEmailing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.email_outlined,
+                        ),
+                  label: const Text(
+                    'Email PDF — 5 credits',
+                  ),
+                ),
+              ],
             );
 
             if (compact) {
@@ -1221,6 +1267,224 @@ class _ExportCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ============================================================
+  // EMAIL
+  // ============================================================
+
+  Future<void> _emailReport(
+    BuildContext context,
+    List<Map<String, dynamic>> report,
+    double totalSalary,
+    double totalDebt,
+  ) async {
+    final settingsDao = SettingsDao(getDatabase());
+    final defaultEmail =
+        await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final controller = TextEditingController(
+      text: defaultEmail,
+    );
+
+    try {
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(
+              'Email Salary & Debt Report',
+            ),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (value.isNotEmpty) {
+                    Navigator.of(dialogContext).pop(value);
+                  }
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isEmailing = true);
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Salary & Debt Report',
+        sections: [
+          {
+            'title': 'Payroll Summary',
+            'headers': [
+              'Metric',
+              'Value',
+            ],
+            'rows': [
+              [
+                'Total Staff',
+                '${report.length}',
+              ],
+              [
+                'Total Monthly Salary',
+                SalaryReportScreen._formatCurrency(
+                  totalSalary,
+                ),
+              ],
+              [
+                'Total Outstanding Debt',
+                SalaryReportScreen._formatCurrency(
+                  totalDebt,
+                ),
+              ],
+            ],
+          },
+          {
+            'title': 'Staff Payroll',
+            'headers': [
+              'Staff',
+              'Role',
+              'Salary',
+              'Outstanding',
+            ],
+            'rows': report.map((staff) {
+              final name =
+                  staff['name']?.toString() ??
+                      'Unknown Staff';
+              final role =
+                  staff['role']?.toString() ??
+                      'Staff';
+              final salary =
+                  SalaryReportScreen._toDouble(
+                staff['salary'],
+              );
+              final debt =
+                  SalaryReportScreen._toDouble(
+                staff['amountOwed'],
+              );
+              return [
+                name,
+                role,
+                SalaryReportScreen._formatCurrency(
+                  salary,
+                ),
+                debt > 0
+                    ? SalaryReportScreen._formatCurrency(
+                        debt,
+                      )
+                    : 'No debt',
+              ];
+            }).toList(),
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(
+        settingsDao,
+      );
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(
+        settingsDao,
+      );
+
+      final normalizedBusinessName =
+          businessName.trim().isEmpty
+              ? 'Creator Yard'
+              : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject:
+            '$normalizedBusinessName - Salary & Debt Report',
+        body:
+            'Attached is the Salary & Debt Report PDF for $normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'salary-debt-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Salary & debt report emailed successfully.',
+          ),
+        ),
+      );
+    } on EmailServiceException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+          content: Text(
+            error.retryable
+                ? 'Unable to email salary report. Please try again.'
+                : error.message,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+          content: Text(
+            'Failed to email salary report: $error',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isEmailing = false);
+      }
+    }
   }
 
   // ============================================================
@@ -1253,13 +1517,13 @@ class _ExportCard extends StatelessWidget {
               [
                 'Total Monthly Salary',
                 SalaryReportScreen._formatCurrency(
-                  totalSalary,
+                  widget.totalSalary,
                 ),
               ],
               [
                 'Total Outstanding Debt',
                 SalaryReportScreen._formatCurrency(
-                  totalDebt,
+                  widget.totalDebt,
                 ),
               ],
             ],
