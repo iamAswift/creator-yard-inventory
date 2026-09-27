@@ -1,11 +1,17 @@
 // lib/features/reports/stock_value_report_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/business/business_identity.dart';
+import '../../core/email/email_service.dart';
 import '../../core/responsive/responsive.dart';
+import '../../core/system/installation_identity.dart';
 import '../../core/theme/styles.dart';
 import '../../database/app_database.dart';
 import '../../database/daos/sales_dao.dart';
+import '../../database/daos/settings_dao.dart';
 import '../../shared/pdf_report.dart';
 
 class StockValueReportScreen extends StatefulWidget {
@@ -22,6 +28,7 @@ class _StockValueReportScreenState
 
   double _totalStockValue = 0;
   bool _isLoading = true;
+  bool _isEmailing = false;
   String? _error;
 
   @override
@@ -696,38 +703,241 @@ class _StockValueReportScreenState
   }) {
     final responsive = context.responsive;
 
-    return SizedBox(
-      height: responsive.buttonHeight,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.primary,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg + 2,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(
-              AppRadius.md + 2,
+    return Wrap(
+      spacing: AppSpacing.md,
+      runSpacing: AppSpacing.md,
+      children: [
+        SizedBox(
+          height: responsive.buttonHeight,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.primary,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg + 2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  AppRadius.md + 2,
+                ),
+              ),
+            ),
+            icon: const Icon(
+              Icons.download_outlined,
+              size: 19,
+            ),
+            label: const Text(
+              'Export PDF',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            onPressed: () => _exportPdf(
+              totalStockValue: totalStockValue,
             ),
           ),
         ),
-        icon: const Icon(
-          Icons.download_outlined,
-          size: 19,
-        ),
-        label: const Text(
-          'Export PDF',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w600,
+        SizedBox(
+          height: responsive.buttonHeight,
+          child: OutlinedButton.icon(
+            onPressed: _isEmailing
+                ? null
+                : () => _emailReport(
+                      totalStockValue: totalStockValue,
+                    ),
+            icon: _isEmailing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(
+                    Icons.email_outlined,
+                    size: 19,
+                  ),
+            label: const Text(
+              'Email PDF — 5 credits',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
-        onPressed: () => _exportPdf(
-          totalStockValue: totalStockValue,
-        ),
-      ),
+      ],
     );
+  }
+
+  // ============================================================
+  // EMAIL
+  // ============================================================
+
+  Future<void> _emailReport({
+    required double totalStockValue,
+  }) async {
+    final settingsDao = SettingsDao(getDatabase());
+    final defaultEmail =
+        await BusinessIdentity.getBusinessEmail(settingsDao);
+
+    if (!mounted) {
+      return;
+    }
+
+    final controller = TextEditingController(
+      text: defaultEmail,
+    );
+
+    try {
+      final recipient = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(
+              'Email Stock Value Report',
+            ),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Recipient email',
+                hintText: 'name@example.com',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (value.isNotEmpty) {
+                    Navigator.of(dialogContext).pop(value);
+                  }
+                },
+                child: const Text('Send'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (recipient == null || recipient.trim().isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _isEmailing = true);
+
+      final pdfFile = await PdfReport.generateReport(
+        title: 'Stock Value Report',
+        sections: [
+          {
+            'title': 'Stock Value Summary',
+            'headers': [
+              'Metric',
+              'Value',
+            ],
+            'rows': [
+              [
+                'Total Stock Value',
+                _formatCurrency(totalStockValue),
+              ],
+            ],
+          },
+        ],
+      );
+
+      final pdfBytes = await pdfFile.readAsBytes();
+      final pdfBase64 = base64Encode(pdfBytes);
+
+      final installationId =
+          await InstallationIdentity.getInstallationId(
+        settingsDao,
+      );
+
+      final businessName =
+          await BusinessIdentity.getBusinessName(
+        settingsDao,
+      );
+
+      final normalizedBusinessName =
+          businessName.trim().isEmpty
+              ? 'Creator Yard'
+              : businessName.trim();
+
+      await EmailService.sendReportEmail(
+        settingsDao: settingsDao,
+        installationId: installationId,
+        reportId: DateTime.now().millisecondsSinceEpoch,
+        recipient: recipient.trim(),
+        subject:
+            '$normalizedBusinessName - Stock Value Report',
+        body:
+            'Attached is the Stock Value Report PDF for $normalizedBusinessName.',
+        pdfBase64: pdfBase64,
+        filename: 'stock-value-report.pdf',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Text(
+            'Stock value report emailed successfully.',
+          ),
+        ),
+      );
+    } on EmailServiceException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+              Theme.of(context).colorScheme.error,
+          content: Text(
+            error.retryable
+                ? 'Unable to email stock value report. Please try again.'
+                : error.message,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+              Theme.of(context).colorScheme.error,
+          content: Text(
+            'Failed to email stock value report: $error',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isEmailing = false);
+      }
+    }
   }
 
   // ============================================================
