@@ -35,6 +35,7 @@ class _ProductFormScreenState
   final _costPriceController = TextEditingController();
   final _sellingPriceController = TextEditingController();
   final _expiryController = TextEditingController();
+  final _initialStockController = TextEditingController(text: '0');
 
   int? _selectedCategoryId;
   String? _selectedUnit;
@@ -43,6 +44,7 @@ class _ProductFormScreenState
 
   bool _isSaving = false;
   bool _productExpiryEnabled = true;
+  bool _suppliersEnabled = true;
 
   late final ProductDao _productDao;
   late final CategoryDao _categoryDao;
@@ -129,15 +131,21 @@ class _ProductFormScreenState
   // ============================================================
 
   Future<void> _loadProductSettings() async {
-    final enabled = await _settingsDao.getBoolSettingOrDefault(
+    final expiryEnabled = await _settingsDao.getBoolSettingOrDefault(
       BusinessSettings.productExpiryEnabled,
+      defaultValue: true,
+    );
+
+    final suppliersEnabled = await _settingsDao.getBoolSettingOrDefault(
+      BusinessSettings.suppliersEnabled,
       defaultValue: true,
     );
 
     if (!mounted) return;
 
     setState(() {
-      _productExpiryEnabled = enabled;
+      _productExpiryEnabled = expiryEnabled;
+      _suppliersEnabled = suppliersEnabled;
     });
   }
 
@@ -191,6 +199,22 @@ class _ProductFormScreenState
       return;
     }
 
+    final initialStock = int.tryParse(
+      _initialStockController.text.trim(),
+    );
+
+    if (!_suppliersEnabled &&
+        (initialStock == null || initialStock < 0)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a valid initial stock quantity.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -212,7 +236,7 @@ class _ProductFormScreenState
           sellingPrice: double.parse(
             _sellingPriceController.text.trim(),
           ),
-          stock: const Value(0),
+          stock: Value(_suppliersEnabled ? 0 : initialStock!),
           barcode: const Value.absent(),
           imagePath: _selectedImagePath == null
               ? const Value.absent()
@@ -770,6 +794,31 @@ class _ProductFormScreenState
                             return null;
                           },
                         ),
+
+                        if (!_suppliersEnabled) ...[
+                          SizedBox(
+                            height: _fieldSpacing(context),
+                          ),
+                          TextFormField(
+                            controller: _initialStockController,
+                            keyboardType: TextInputType.number,
+                            style: AppTextStyles.body,
+                            decoration: _inputDecoration(
+                              label: 'Initial stock',
+                              hint: 'Enter current stock quantity',
+                              icon: Icons.inventory_2_outlined,
+                            ),
+                            validator: (value) {
+                              final quantity = int.tryParse(
+                                value?.trim() ?? '',
+                              );
+                              if (quantity == null || quantity < 0) {
+                                return 'Enter a valid quantity';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1033,6 +1082,7 @@ class _ProductFormScreenState
     _costPriceController.dispose();
     _sellingPriceController.dispose();
     _expiryController.dispose();
+    _initialStockController.dispose();
 
     super.dispose();
   }

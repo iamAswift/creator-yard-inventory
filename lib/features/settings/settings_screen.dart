@@ -60,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _allowNegativeStock = false;
   bool _requireBarcode = false;
   bool _productExpiryEnabled = true;
+  bool _suppliersEnabled = true;
 
   // ============================================================
   // STATE
@@ -203,6 +204,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             BusinessSettings.productExpiryEnabled,
             defaultValue: true,
           );
+      final suppliersEnabled = await widget.settingsDao
+          .getBoolSettingOrDefault(
+            BusinessSettings.suppliersEnabled,
+            defaultValue: true,
+          );
 
       // --------------------------------------------------------
       // STAFF DEBT
@@ -218,6 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         _productExpiryEnabled = productExpiryEnabled;
+        _suppliersEnabled = suppliersEnabled;
         _currencyController.text = currency;
 
         _currencyCodeController.text = currencyCode;
@@ -346,6 +353,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.settingsDao.setSetting(
         BusinessSettings.productExpiryEnabled,
         _productExpiryEnabled.toString(),
+      );
+      await widget.settingsDao.setSetting(
+        BusinessSettings.suppliersEnabled,
+        _suppliersEnabled.toString(),
       );
 
       // ========================================================
@@ -836,6 +847,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onChanged: (value) {
                               setState(() {
                                 _productExpiryEnabled = value;
+                              });
+                            },
+                          ),
+                          _switchTile(
+                            title: 'Supplier Management',
+                            subtitle:
+                                'Use suppliers and supplier deliveries to manage incoming stock.',
+                            value: _suppliersEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _suppliersEnabled = value;
                               });
                             },
                           ),
