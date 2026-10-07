@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supermarket_inventory/core/widgets/back_button.dart';
 
@@ -14,6 +15,7 @@ import '../../database/daos/category_dao.dart';
 import '../../database/daos/product_dao.dart';
 import '../../database/daos/settings_dao.dart';
 import 'product_form_screen.dart';
+import '../sales/barcode_scanner_screen.dart';
 import 'product_history_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -139,6 +141,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     final brandController = TextEditingController(text: p.brand ?? '');
 
+    final barcodeController = TextEditingController(
+      text: p.barcode ?? '',
+    );
+
     final costController = TextEditingController(text: p.costPrice.toString());
 
     final sellController = TextEditingController(
@@ -179,6 +185,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     decoration: _inputDecoration(
                       label: "Brand",
                       icon: Icons.branding_watermark_outlined,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: barcodeController,
+                    style: AppTextStyles.body,
+                    decoration: _inputDecoration(
+                      label: "Barcode",
+                      icon: Icons.qr_code_scanner_outlined,
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        tooltip: "Scan Barcode",
+                        icon: const Icon(Icons.qr_code_scanner_outlined),
+                        onPressed: () async {
+                          final scannedBarcode =
+                              await Navigator.of(dialogContext).push<String>(
+                            MaterialPageRoute(
+                              builder: (_) => const BarcodeScannerScreen(),
+                            ),
+                          );
+
+                          if (scannedBarcode != null &&
+                              scannedBarcode.trim().isNotEmpty) {
+                            barcodeController.text = scannedBarcode.trim();
+                          }
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -229,6 +262,28 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
             ElevatedButton.icon(
               onPressed: () async {
+                final barcode = barcodeController.text.trim();
+
+                if (barcode.isNotEmpty) {
+                  final existingProduct =
+                      await _productDao.findByBarcode(barcode);
+
+                  if (existingProduct != null &&
+                      existingProduct.id != p.id) {
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'This barcode is already assigned to another product.',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
                 DateTime? expiry = p.expiryDate;
 
                 if (_productExpiryEnabled) {
@@ -255,7 +310,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         double.tryParse(sellController.text.trim()) ??
                         p.sellingPrice,
                     stock: p.stock,
-                    barcode: p.barcode,
+                    barcode: barcode.isEmpty ? null : barcode,
                     imagePath: updatedImage,
                     expiryDate: expiry,
                   ),
@@ -275,6 +330,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     nameController.dispose();
     brandController.dispose();
+    barcodeController.dispose();
     costController.dispose();
     sellController.dispose();
     expiryController.dispose();
@@ -761,6 +817,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ],
                 ),
               ],
+
+
             ],
           ),
         ),
@@ -977,6 +1035,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 52,
+        actions: [
+          IconButton(
+            tooltip: 'Barcode Management',
+            icon: const Icon(Icons.qr_code_2),
+            onPressed: () {
+              context.push('/products/barcodes');
+            },
+          ),
+        ],
       ),
 
       // ============================================================

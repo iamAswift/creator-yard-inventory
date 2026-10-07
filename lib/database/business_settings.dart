@@ -149,6 +149,19 @@ class BusinessSettings {
   static const String receiptPaperSize = 'receipt_paper_size';
 
   // ============================================================
+  // BARCODE PRINTING
+  // ============================================================
+
+  static const String barcodePrintingMethod =
+      'barcode_printing_method';
+
+  static const String barcodeLabelWidth =
+      'barcode_label_width';
+
+  static const String barcodeLabelHeight =
+      'barcode_label_height';
+
+  // ============================================================
   // STAFF
   // ============================================================
 

@@ -63,6 +63,8 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
 
   String _paperSize = '80mm';
 
+  String _barcodePrintingMethod = 'A4';
+
   bool _isLoading = true;
 
   bool _isSaving = false;
@@ -72,6 +74,11 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
   // ============================================================
 
   static const List<String> _paperSizes = ['58mm', '80mm', 'A4'];
+
+  static const List<String> _barcodePrintingMethods = [
+    'A4',
+    'Thermal',
+  ];
 
   // ============================================================
   // INIT
@@ -154,6 +161,10 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
         BusinessSettings.receiptPaperSize,
       );
 
+      final barcodePrintingMethod = await widget.settingsDao.getSetting(
+        BusinessSettings.barcodePrintingMethod,
+      );
+
       if (!mounted) return;
 
       setState(() {
@@ -193,6 +204,11 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
 
         if (paperSize != null && _paperSizes.contains(paperSize)) {
           _paperSize = paperSize;
+        }
+
+        if (barcodePrintingMethod != null &&
+            _barcodePrintingMethods.contains(barcodePrintingMethod)) {
+          _barcodePrintingMethod = barcodePrintingMethod;
         }
 
         _isLoading = false;
@@ -280,6 +296,11 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
       await widget.settingsDao.setSetting(
         BusinessSettings.receiptPaperSize,
         _paperSize,
+      );
+
+      await widget.settingsDao.setSetting(
+        BusinessSettings.barcodePrintingMethod,
+        _barcodePrintingMethod,
       );
 
       if (!mounted) return;
@@ -990,6 +1011,43 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
 
                           setState(() {
                             _paperSize = value;
+                          });
+                        },
+                      ),
+                    ),
+
+                    // ==========================================
+                    // BARCODE PRINTING
+                    // ==========================================
+                    _section(
+                      title: 'Barcode Printing',
+                      subtitle:
+                          'Choose the printer type used for product barcodes.',
+                      icon: Icons.qr_code_2,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _barcodePrintingMethod,
+                        decoration: const InputDecoration(
+                          labelText: 'Printing Method',
+                        ),
+                        items: _barcodePrintingMethods
+                            .map(
+                              (method) => DropdownMenuItem<String>(
+                                value: method,
+                                child: Text(
+                                  method == 'A4'
+                                      ? 'A4 / Normal Printer'
+                                      : 'Thermal Label Printer',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+
+                          setState(() {
+                            _barcodePrintingMethod = value;
                           });
                         },
                       ),

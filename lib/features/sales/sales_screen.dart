@@ -27,6 +27,7 @@ import 'payment_selector.dart';
 import 'receipt_widget.dart';
 import '../../core/email/email_credits_service.dart';
 import '../../core/email/sale_email_worker.dart';
+import 'barcode_scanner_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -1465,6 +1466,20 @@ class _SalesScreenState extends State<SalesScreen> {
   // SEARCH BAR
   // ============================================================
 
+  Future<void> _openBarcodeScanner() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+
+    if (!mounted || barcode == null || barcode.trim().isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _searchQuery = barcode.trim().toLowerCase();
+    });
+  }
+
   Widget _buildSearchBar() {
     final r = context.responsive;
 
@@ -1507,7 +1522,15 @@ class _SalesScreenState extends State<SalesScreen> {
                       });
                     },
                   )
-                : null,
+                : IconButton(
+                    tooltip: 'Scan barcode',
+                    icon: const Icon(
+                      Icons.qr_code_scanner,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: _openBarcodeScanner,
+                  ),
             filled: true,
             fillColor: AppColors.surface,
             contentPadding: const EdgeInsets.symmetric(

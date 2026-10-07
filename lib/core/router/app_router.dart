@@ -17,6 +17,7 @@ import '../../features/users/user_list_screen.dart';
 
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/products/products_screen.dart';
+import '../../features/products/barcode_management_screen.dart';
 import '../../features/suppliers/suppliers_screen.dart';
 import '../../features/sales/sales_screen.dart';
 
@@ -106,6 +107,16 @@ GoRouter appRouter({
             path: '/products',
             builder: (context, state) {
               return const ProductsScreen();
+            },
+          ),
+
+          // ======================================================
+          // BARCODE MANAGEMENT
+          // ======================================================
+          GoRoute(
+            path: '/products/barcodes',
+            builder: (context, state) {
+              return const BarcodeManagementScreen();
             },
           ),
 

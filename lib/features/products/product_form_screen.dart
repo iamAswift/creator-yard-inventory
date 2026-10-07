@@ -17,6 +17,7 @@ import '../../database/daos/product_dao.dart';
 import '../../database/daos/settings_dao.dart';
 import '../../database/business_settings.dart';
 import '../../core/responsive/responsive.dart';
+import '../sales/barcode_scanner_screen.dart';
 
 class ProductFormScreen extends StatefulWidget {
   const ProductFormScreen({super.key});
@@ -32,6 +33,7 @@ class _ProductFormScreenState
 
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
+  final _barcodeController = TextEditingController();
   final _costPriceController = TextEditingController();
   final _sellingPriceController = TextEditingController();
   final _expiryController = TextEditingController();
@@ -45,6 +47,7 @@ class _ProductFormScreenState
   bool _isSaving = false;
   bool _productExpiryEnabled = true;
   bool _suppliersEnabled = true;
+  bool _requireBarcode = false;
 
   late final ProductDao _productDao;
   late final CategoryDao _categoryDao;
@@ -141,11 +144,17 @@ class _ProductFormScreenState
       defaultValue: true,
     );
 
+    final requireBarcode = await _settingsDao.getBoolSettingOrDefault(
+      BusinessSettings.requireBarcode,
+      defaultValue: false,
+    );
+
     if (!mounted) return;
 
     setState(() {
       _productExpiryEnabled = expiryEnabled;
       _suppliersEnabled = suppliersEnabled;
+      _requireBarcode = requireBarcode;
     });
   }
 
@@ -191,12 +200,99 @@ class _ProductFormScreenState
   }
 
   // ============================================================
+  // SCAN PRODUCT BARCODE
+  // ============================================================
+
+  Future<void> _scanBarcode() async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const BarcodeScannerScreen(),
+      ),
+    );
+
+    if (!mounted || barcode == null || barcode.trim().isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _barcodeController.text = barcode.trim();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Barcode scanned successfully.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ============================================================
+  // GENERATE INTERNAL BARCODE
+  // ============================================================
+
+  Future<void> _generateBarcode() async {
+    final existingBarcode = _barcodeController.text.trim();
+
+    if (existingBarcode.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'A barcode already exists. Generate is only for products without a barcode.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    String barcode;
+
+    do {
+      barcode =
+          '20${DateTime.now().millisecondsSinceEpoch.toString().substring(3)}';
+    } while (await _productDao.findByBarcode(barcode) != null);
+
+    if (!mounted) return;
+
+    setState(() {
+      _barcodeController.text = barcode;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Internal barcode generated.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ============================================================
   // SAVE PRODUCT
   // ============================================================
 
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
+    }
+
+    final barcode = _barcodeController.text.trim();
+
+    if (barcode.isNotEmpty) {
+      final existingProduct = await _productDao.findByBarcode(barcode);
+
+      if (existingProduct != null) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This barcode is already assigned to another product.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
     }
 
     final initialStock = int.tryParse(
@@ -237,7 +333,9 @@ class _ProductFormScreenState
             _sellingPriceController.text.trim(),
           ),
           stock: Value(_suppliersEnabled ? 0 : initialStock!),
-          barcode: const Value.absent(),
+          barcode: barcode.isEmpty
+              ? const Value.absent()
+              : Value(barcode),
           imagePath: _selectedImagePath == null
               ? const Value.absent()
               : Value(_selectedImagePath!),
@@ -512,6 +610,53 @@ class _ProductFormScreenState
                             icon:
                                 Icons.sell_outlined,
                           ),
+                        ),
+
+                        SizedBox(
+                          height: _fieldSpacing(context),
+                        ),
+
+                        // BARCODE
+                        TextFormField(
+                          controller: _barcodeController,
+                          keyboardType: TextInputType.text,
+                          style: AppTextStyles.body,
+                          decoration: _inputDecoration(
+                            label: _requireBarcode
+                                ? 'Barcode (Required)'
+                                : 'Barcode (Optional)',
+                            hint: 'Enter or scan barcode',
+                            icon: Icons.qr_code_2_outlined,
+                          ).copyWith(
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Scan barcode',
+                                  icon: const Icon(
+                                    Icons.qr_code_scanner_outlined,
+                                  ),
+                                  onPressed:
+                                      _isSaving ? null : _scanBarcode,
+                                ),
+                                IconButton(
+                                  tooltip: 'Generate barcode',
+                                  icon: const Icon(
+                                    Icons.auto_awesome_outlined,
+                                  ),
+                                  onPressed:
+                                      _isSaving ? null : _generateBarcode,
+                                ),
+                              ],
+                            ),
+                          ),
+                          validator: (value) {
+                            final barcode = value?.trim() ?? '';
+                            if (_requireBarcode && barcode.isEmpty) {
+                              return 'Enter a barcode';
+                            }
+                            return null;
+                          },
                         ),
 
                         SizedBox(
@@ -1079,6 +1224,7 @@ class _ProductFormScreenState
   void dispose() {
     _nameController.dispose();
     _brandController.dispose();
+    _barcodeController.dispose();
     _costPriceController.dispose();
     _sellingPriceController.dispose();
     _expiryController.dispose();
