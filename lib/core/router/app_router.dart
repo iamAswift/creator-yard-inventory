@@ -44,6 +44,7 @@ import '../../features/licensing/license_access_screen.dart';
 GoRouter appRouter({
   required bool needsInitialSetup,
   required LicenseState? licenseState,
+  required Future<void> Function() onRetryLicense,
 }) {
   return GoRouter(
     // ==========================================================
@@ -84,7 +85,10 @@ GoRouter appRouter({
       ShellRoute(
         builder: (context, state, child) {
           if (licenseState != null && !licenseState.hasAccess) {
-            return LicenseAccessScreen(licenseState: licenseState);
+            return LicenseAccessScreen(
+              licenseState: licenseState,
+              onRetry: onRetryLicense,
+            );
           }
 
           return MainScaffold(child: child);

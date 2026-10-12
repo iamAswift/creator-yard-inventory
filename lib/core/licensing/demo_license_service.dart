@@ -54,10 +54,6 @@ class DemoLicenseService implements LicenseProvider {
       installationId,
     );
 
-    final existingStatus = await settingsDao.getSetting(
-      BusinessSettings.licenseStatus,
-    );
-
     final existingDemoStartedAt = await settingsDao.getSetting(
       BusinessSettings.demoStartedAt,
     );
@@ -126,28 +122,6 @@ class DemoLicenseService implements LicenseProvider {
         demoStartedAt: demoStartedAt,
         demoExpiresAt: demoExpiresAt,
         lastSeenAt: lastSeenAt,
-      );
-    }
-
-    // ----------------------------------------------------------
-    // Commercial license state
-    //
-    // The actual commercial license validation will be introduced
-    // later through another LicenseProvider implementation.
-    // ----------------------------------------------------------
-
-    if (existingStatus == 'licensed') {
-      await settingsDao.setSetting(
-        BusinessSettings.licenseLastSeenAt,
-        now.toIso8601String(),
-      );
-
-      return LicenseState(
-        status: LicenseStatus.licensed,
-        installationId: installationId,
-        demoStartedAt: demoStartedAt,
-        demoExpiresAt: demoExpiresAt,
-        lastSeenAt: now,
       );
     }
 

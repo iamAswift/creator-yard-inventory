@@ -47,6 +47,9 @@ class BusinessSettings {
   /// Used later to detect obvious system-clock rollback.
   static const String licenseLastSeenAt = 'license_last_seen_at';
 
+  /// Cryptographically verified commercial entitlement cached for offline use.
+  static const String commercialEntitlement = 'commercial_entitlement';
+
   // ============================================================
   // APPEARANCE
   // ============================================================

@@ -13,7 +13,6 @@ import 'core/email/sale_email_worker.dart';
 import 'core/backup/backup_service.dart';
 import 'core/app/app_refresh.dart';
 import 'core/system/installation_registration_service.dart';
-import 'core/licensing/commercial_license_provider.dart';
 import 'core/licensing/hybrid_license_provider.dart';
 import 'core/licensing/license_repository.dart';
 import 'core/licensing/license_state.dart';
@@ -89,12 +88,8 @@ Future<void> main() async {
   // public Flutter application.
   //
 
-  const isCommercialBuild = bool.fromEnvironment('CREATOR_YARD_COMMERCIAL');
-
   final licenseRepository = LicenseRepository(
-    provider: isCommercialBuild
-        ? CommercialLicenseProvider(settingsDao: settingsDao)
-        : HybridLicenseProvider(settingsDao: settingsDao),
+    provider: HybridLicenseProvider(settingsDao: settingsDao),
   );
 
   LicenseState? licenseState;
@@ -125,25 +120,19 @@ Future<void> main() async {
     debugPrint('Creator Yard licensing initialization failed: $e');
     debugPrint('$stackTrace');
 
-    if (isCommercialBuild) {
-      final installationId = await InstallationIdentity.getInstallationId(
-        settingsDao,
-      );
+    final installationId = await InstallationIdentity.getInstallationId(
+      settingsDao,
+    );
 
-      licenseState = LicenseState(
-        status: LicenseStatus.unlicensed,
-        installationId: installationId,
-      );
-      debugPrint(
-        'Commercial licensing failed. '
-        'The application will continue in unlicensed mode.',
-      );
-    } else {
-      debugPrint(
-        'Demo licensing failed. '
-        'The application will continue in unlicensed mode.',
-      );
-    }
+    licenseState = LicenseState(
+      status: LicenseStatus.unlicensed,
+      installationId: installationId,
+    );
+
+    debugPrint(
+      'Hybrid licensing failed. '
+      'The application will continue in unlicensed mode.',
+    );
   }
 
   // ------------------------------------------------------------
@@ -238,15 +227,44 @@ class _SupermarketAppState extends State<SupermarketApp> {
   bool _themeLoaded = false;
   late SettingsDao _settingsDao;
 
+  LicenseState? _licenseState;
   @override
   void initState() {
     super.initState();
 
     _settingsDao = widget.settingsDao;
 
+    _licenseState = widget.licenseState;
     AppRefresh.version.addListener(_handleAppRefresh);
 
     _loadTheme();
+  }
+
+  Future<void> _retryLicenseVerification() async {
+    try {
+      final repository = LicenseRepository(
+        provider: HybridLicenseProvider(settingsDao: _settingsDao),
+      );
+      final state = await repository.initialize();
+
+      if (!mounted) return;
+      setState(() => _licenseState = state);
+    } catch (error, stackTrace) {
+      debugPrint('License verification retry failed: $error');
+      debugPrint('$stackTrace');
+
+      final installationId =
+          _licenseState?.installationId ??
+          await InstallationIdentity.getInstallationId(_settingsDao);
+
+      if (!mounted) return;
+      setState(() {
+        _licenseState = LicenseState(
+          status: LicenseStatus.verificationUnavailable,
+          installationId: installationId,
+        );
+      });
+    }
   }
 
   void _handleAppRefresh() {
@@ -351,7 +369,8 @@ class _SupermarketAppState extends State<SupermarketApp> {
       // --------------------------------------------------------
       routerConfig: appRouter(
         needsInitialSetup: widget.needsInitialSetup,
-        licenseState: widget.licenseState,
+        licenseState: _licenseState,
+        onRetryLicense: _retryLicenseVerification,
       ),
 
       debugShowCheckedModeBanner: false,

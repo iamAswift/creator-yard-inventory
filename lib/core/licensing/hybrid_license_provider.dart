@@ -24,7 +24,12 @@ class HybridLicenseProvider implements LicenseProvider {
       return commercialState;
     }
 
-    return _demoProvider.initialize();
+    if (commercialState.status == LicenseStatus.noCommercialLicense) {
+      return _demoProvider.initialize();
+    }
+
+    // Revocation and verification failures must not become demo access.
+    return commercialState;
   }
 
   @override
