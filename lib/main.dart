@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 
 import 'core/router/app_router.dart';
@@ -226,6 +227,9 @@ class _SupermarketAppState extends State<SupermarketApp> {
 
   bool _themeLoaded = false;
   late SettingsDao _settingsDao;
+  late bool _needsInitialSetup;
+  late final GoRouter _router;
+  final _LicenseStateNotifier _licenseStateChanges = _LicenseStateNotifier();
 
   LicenseState? _licenseState;
   @override
@@ -233,10 +237,18 @@ class _SupermarketAppState extends State<SupermarketApp> {
     super.initState();
 
     _settingsDao = widget.settingsDao;
+    _needsInitialSetup = widget.needsInitialSetup;
 
     _licenseState = widget.licenseState;
-    AppRefresh.version.addListener(_handleAppRefresh);
 
+    _router = appRouter(
+      needsInitialSetup: () => _needsInitialSetup,
+      licenseState: () => _licenseState,
+      licenseStateChanges: _licenseStateChanges,
+      onRetryLicense: _retryLicenseVerification,
+    );
+
+    AppRefresh.version.addListener(_handleAppRefresh);
     _loadTheme();
   }
 
@@ -249,6 +261,7 @@ class _SupermarketAppState extends State<SupermarketApp> {
 
       if (!mounted) return;
       setState(() => _licenseState = state);
+      _licenseStateChanges.notifyLicenseStateChanged();
     } catch (error, stackTrace) {
       debugPrint('License verification retry failed: $error');
       debugPrint('$stackTrace');
@@ -264,6 +277,7 @@ class _SupermarketAppState extends State<SupermarketApp> {
           installationId: installationId,
         );
       });
+      _licenseStateChanges.notifyLicenseStateChanged();
     }
   }
 
@@ -271,10 +285,20 @@ class _SupermarketAppState extends State<SupermarketApp> {
     if (!mounted) return;
 
     _settingsDao = getSettingsDao();
+    final resetRequested = AppRefresh.consumeResetRequest();
 
     setState(() {
-      _themeLoaded = false;
+      if (resetRequested) {
+        _needsInitialSetup = true;
+        _licenseState = null;
+      }
     });
+
+    if (resetRequested) {
+      _licenseStateChanges.notifyLicenseStateChanged();
+      _router.go('/initial-setup');
+      unawaited(_retryLicenseVerification());
+    }
 
     _loadTheme();
   }
@@ -282,6 +306,8 @@ class _SupermarketAppState extends State<SupermarketApp> {
   @override
   void dispose() {
     AppRefresh.version.removeListener(_handleAppRefresh);
+    _router.dispose();
+    _licenseStateChanges.dispose();
     super.dispose();
   }
 
@@ -367,13 +393,15 @@ class _SupermarketAppState extends State<SupermarketApp> {
       // --------------------------------------------------------
       // ROUTER
       // --------------------------------------------------------
-      routerConfig: appRouter(
-        needsInitialSetup: widget.needsInitialSetup,
-        licenseState: _licenseState,
-        onRetryLicense: _retryLicenseVerification,
-      ),
+      routerConfig: _router,
 
       debugShowCheckedModeBanner: false,
     );
+  }
+}
+
+class _LicenseStateNotifier extends ChangeNotifier {
+  void notifyLicenseStateChanged() {
+    notifyListeners();
   }
 }

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/backup/backup_service.dart';
 import '../../core/app/app_refresh.dart';
+import '../../core/reset/local_data_reset_service.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/styles.dart';
 import '../../database/daos/settings_dao.dart';
@@ -25,6 +26,7 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
   bool _isLoading = true;
   bool _isCreatingBackup = false;
   bool _isRestoring = false;
+  bool _isResetting = false;
   String? _errorMessage;
 
   @override
@@ -61,7 +63,7 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
   }
 
   Future<void> _restoreBackup(File backup) async {
-    if (_isRestoring || _isCreatingBackup) return;
+    if (_isResetting || _isRestoring || _isCreatingBackup) return;
 
     final shouldRestore = await showDialog<bool>(
       context: context,
@@ -99,9 +101,7 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
 
       final safetyBackup = await BackupService.backupNow();
 
-      debugPrint(
-        'Restore safety backup created: ${safetyBackup.path}',
-      );
+      debugPrint('Restore safety backup created: ${safetyBackup.path}');
 
       await BackupService.replaceLiveDatabase(backup);
 
@@ -110,18 +110,14 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Database restored successfully.'),
-        ),
+        const SnackBar(content: Text('Database restored successfully.')),
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Database restore failed: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Database restore failed: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -131,8 +127,62 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
     }
   }
 
+  Future<void> _resetAllLocalData() async {
+    if (_isResetting || _isRestoring || _isCreatingBackup) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset All Local Data?'),
+        content: const Text(
+          'This permanently removes local business data, including products, '
+          'sales, users, business settings, saved images, and local backups. '
+          'You will return to the initial setup screen.\n\n'
+          'Your app installation and Android kiosk configuration will remain '
+          'installed. This action does not delete or revoke remote licensing '
+          'records. Make sure you have any backups you need before continuing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reset Local Data'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isResetting = true);
+
+    try {
+      await LocalDataResetService.reset();
+
+      if (!mounted) return;
+
+      AppRefresh.resetToInitialSetup();
+    } catch (error, stackTrace) {
+      debugPrint('Reset local data failed: $error');
+      debugPrint('$stackTrace');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Reset failed: $error')));
+    } finally {
+      if (mounted) {
+        setState(() => _isResetting = false);
+      }
+    }
+  }
+
   Future<void> _createBackup() async {
-    if (_isCreatingBackup) return;
+    if (_isResetting || _isRestoring || _isCreatingBackup) return;
 
     setState(() {
       _isCreatingBackup = true;
@@ -249,7 +299,7 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
           ),
         ),
         trailing: TextButton.icon(
-          onPressed: (_isRestoring || _isCreatingBackup)
+          onPressed: (_isResetting || _isRestoring || _isCreatingBackup)
               ? null
               : () => _restoreBackup(backup),
           icon: const Icon(Icons.restore),
@@ -373,7 +423,10 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _isCreatingBackup ? null : _createBackup,
+                        onPressed:
+                            (_isResetting || _isRestoring || _isCreatingBackup)
+                            ? null
+                            : _createBackup,
                         icon: _isCreatingBackup
                             ? const SizedBox(
                                 width: 18,
@@ -395,6 +448,49 @@ class _BackupDataScreenState extends State<BackupDataScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
+
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Reset All Local Data', style: AppTextStyles.title),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Remove local business records and return to initial '
+                      'setup. This cannot be undone.',
+                      style: AppTextStyles.bodySecondary,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            (_isResetting || _isRestoring || _isCreatingBackup)
+                            ? null
+                            : _resetAllLocalData,
+                        icon: _isResetting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.delete_forever_outlined),
+                        label: Text(
+                          _isResetting
+                              ? 'Resetting...'
+                              : 'Reset All Local Data',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             Text('Backup History', style: AppTextStyles.title),
             const SizedBox(height: AppSpacing.md),
             _buildBackupHistory(),

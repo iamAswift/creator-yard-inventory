@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 // lib/core/router/app_router.dart
 
 import 'package:go_router/go_router.dart';
@@ -42,15 +43,16 @@ import '../licensing/license_state.dart';
 import '../../features/licensing/license_access_screen.dart';
 
 GoRouter appRouter({
-  required bool needsInitialSetup,
-  required LicenseState? licenseState,
+  required bool Function() needsInitialSetup,
+  required LicenseState? Function() licenseState,
+  required Listenable licenseStateChanges,
   required Future<void> Function() onRetryLicense,
 }) {
   return GoRouter(
     // ==========================================================
     // INITIAL LOCATION
     // ==========================================================
-    initialLocation: needsInitialSetup
+    initialLocation: needsInitialSetup()
         ? '/initial-setup'
         : (Session.isLoggedIn ? '/dashboard' : '/'),
 
@@ -84,14 +86,22 @@ GoRouter appRouter({
       // ==========================================================
       ShellRoute(
         builder: (context, state, child) {
-          if (licenseState != null && !licenseState.hasAccess) {
-            return LicenseAccessScreen(
-              licenseState: licenseState,
-              onRetry: onRetryLicense,
-            );
-          }
+          return AnimatedBuilder(
+            animation: licenseStateChanges,
+            builder: (context, _) {
+              final currentLicenseState = licenseState();
 
-          return MainScaffold(child: child);
+              if (currentLicenseState != null &&
+                  !currentLicenseState.hasAccess) {
+                return LicenseAccessScreen(
+                  licenseState: currentLicenseState,
+                  onRetry: onRetryLicense,
+                );
+              }
+
+              return MainScaffold(child: child);
+            },
+          );
         },
         routes: [
           // ======================================================
